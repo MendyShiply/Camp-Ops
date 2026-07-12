@@ -2,11 +2,16 @@
   var STORAGE_KEY = "campOpsState.v2";
   var OLD_STORAGE_KEY = "campOpsState.v1";
   var CONFIG_KEY = "campOpsSupabase.v1";
+  var AUTH_KEY = "campOpsAuthSession.v1";
   var seed = window.CampOpsSeed;
   var params = new URLSearchParams(location.search);
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function normalizeSupabaseUrl(url) {
+    return String(url || "").trim().replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
   }
 
   function loadState() {
@@ -33,8 +38,12 @@
         if (!knownLocations[location.id]) state.locations.push(clone(location));
       });
     }
-    state.schemaVersion = 4;
+    state.schemaVersion = 5;
     state.users = state.users && state.users.length ? state.users : clone(seed.users);
+    state.users.forEach(function (user) {
+      user.role = user.role || "worker";
+      user.team = user.team || "";
+    });
     state.requests = state.requests || [];
     state.supplyRequests = state.supplyRequests || [];
     state.timeEntries = state.timeEntries || [];
@@ -50,8 +59,17 @@
   window.CampOps = {
     STORAGE_KEY: STORAGE_KEY,
     CONFIG_KEY: CONFIG_KEY,
+    AUTH_KEY: AUTH_KEY,
     state: loadState(),
-    config: JSON.parse(localStorage.getItem(CONFIG_KEY) || "{}"),
+    config: (function () {
+      var fileConfig = window.CampOpsConfig || {};
+      var browserConfig = JSON.parse(localStorage.getItem(CONFIG_KEY) || "{}");
+      return {
+        url: normalizeSupabaseUrl(browserConfig.url || fileConfig.supabaseUrl || fileConfig.url || ""),
+        anonKey: browserConfig.anonKey || fileConfig.supabaseAnonKey || fileConfig.anonKey || ""
+      };
+    })(),
+    auth: JSON.parse(localStorage.getItem(AUTH_KEY) || "null"),
     currentUserId: localStorage.getItem("campOpsCurrentUser") || "u-mendy",
     view: params.has("request") ? "requestForm" : "dashboard",
     selectedTaskId: null,
@@ -65,11 +83,77 @@
       this.syncSupabase();
     },
     saveConfig: function (next) {
-      this.config = next;
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
+      this.config = {
+        url: normalizeSupabaseUrl(next.url),
+        anonKey: next.anonKey
+      };
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(this.config));
       this.remoteLoaded = false;
     },
+    authUser: function () {
+      return this.auth && this.auth.user ? this.auth.user : null;
+    },
+    isSignedIn: function () {
+      return !!(this.auth && this.auth.access_token && this.auth.user);
+    },
+    authHeaders: function () {
+      return {
+        apikey: this.config.anonKey,
+        Authorization: "Bearer " + (this.auth && this.auth.access_token ? this.auth.access_token : this.config.anonKey)
+      };
+    },
+    signIn: async function (email, password) {
+      var response = await fetch(this.config.url + "/auth/v1/token?grant_type=password", {
+        method: "POST",
+        headers: {
+          apikey: this.config.anonKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email: email, password: password })
+      });
+      var body = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(body.error_description || body.msg || "Sign in failed.");
+      this.auth = body;
+      localStorage.setItem(AUTH_KEY, JSON.stringify(body));
+      this.applyAuthUser();
+      this.remoteLoaded = false;
+    },
+    signOut: function () {
+      this.auth = null;
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem("campOpsCurrentUser");
+      this.currentUserId = "u-mendy";
+    },
+    applyAuthUser: function () {
+      var authUser = this.authUser();
+      if (!authUser || !authUser.email) return;
+      var email = authUser.email.toLowerCase();
+      var matched = this.state.users.find(function (user) {
+        return (user.email || "").toLowerCase() === email;
+      });
+      var hasAnyEmail = this.state.users.some(function (user) { return !!user.email; });
+      if (!matched && !hasAnyEmail) {
+        matched = this.state.users.find(function (user) { return user.role === "owner"; }) || this.state.users[0];
+        matched.email = authUser.email;
+        matched.name = matched.name || authUser.email;
+        matched.role = "owner";
+        this.save();
+      }
+      if (matched) {
+        this.currentUserId = matched.id;
+        localStorage.setItem("campOpsCurrentUser", matched.id);
+      }
+    },
+    hasAccessProfile: function () {
+      var authUser = this.authUser();
+      if (!authUser || !authUser.email) return false;
+      var email = authUser.email.toLowerCase();
+      return this.state.users.some(function (user) {
+        return (user.email || "").toLowerCase() === email;
+      });
+    },
     me: function () {
+      this.applyAuthUser();
       return this.state.users.find(function (user) { return user.id === window.CampOps.currentUserId; }) || this.state.users[0];
     },
     isAdmin: function () {
@@ -77,6 +161,29 @@
     },
     isOwner: function () {
       return this.me().role === "owner";
+    },
+    accessLevels: [
+      { id: "owner", label: "Owner", detail: "Full access, settings, users, and every operations view." },
+      { id: "director", label: "Director", detail: "All operations views, all tasks, approvals, and user access." },
+      { id: "supervisor", label: "Supervisor", detail: "Operations views, all tasks, approvals, and employee records." },
+      { id: "worker", label: "Worker", detail: "Assigned/team tasks, requests, supplies, clock, and schedule." },
+      { id: "requester", label: "Request only", detail: "Can submit requests but does not use the operations dashboard." }
+    ],
+    roleLabel: function (role) {
+      var found = this.accessLevels.find(function (level) { return level.id === role; });
+      return found ? found.label : role;
+    },
+    canManageUsers: function () {
+      return ["owner", "director"].indexOf(this.me().role) >= 0;
+    },
+    canAccess: function (view) {
+      var role = this.me().role;
+      if (view === "requestForm") return true;
+      if (role === "owner") return true;
+      if (role === "director") return view !== "settings";
+      if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "employees"].indexOf(view) >= 0;
+      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule"].indexOf(view) >= 0;
+      return view === "requestForm";
     },
     locationName: function (id) {
       var location = this.state.locations.find(function (item) { return item.id === id; });
@@ -91,6 +198,69 @@
     },
     taskById: function (id) {
       return this.state.tasks.find(function (task) { return task.id === id; });
+    },
+    staffRequestToApp: function (row) {
+      return {
+        id: row.id,
+        source: "staff_requests",
+        title: row.title,
+        requester: row.requester_name || "",
+        locationId: row.location_id || "",
+        category: row.category || "Other",
+        urgency: row.urgency || "normal",
+        details: row.details || "",
+        status: row.status || "pending",
+        createdAt: row.created_at || new Date().toISOString(),
+        chat: []
+      };
+    },
+    loadStaffRequests: async function () {
+      if (!this.config.url || !this.config.anonKey || !this.isSignedIn() || !navigator.onLine) return;
+      try {
+        var response = await fetch(this.config.url + "/rest/v1/staff_requests?select=*&order=created_at.desc", {
+          headers: this.authHeaders()
+        });
+        if (!response.ok) return;
+        var rows = await response.json();
+        var local = this.state.requests.filter(function (request) { return request.source !== "staff_requests"; });
+        this.state.requests = rows.map(this.staffRequestToApp).concat(local);
+      } catch (error) {
+        console.warn("Staff request load failed", error);
+      }
+    },
+    submitPublicRequest: async function (request) {
+      if (!this.config.url || !this.config.anonKey || !navigator.onLine) return false;
+      var row = {
+        title: request.title,
+        requester_name: request.requester,
+        location_id: request.locationId,
+        category: request.category,
+        urgency: request.urgency,
+        details: request.details,
+        status: "pending"
+      };
+      var response = await fetch(this.config.url + "/rest/v1/staff_requests", {
+        method: "POST",
+        headers: {
+          apikey: this.config.anonKey,
+          Authorization: "Bearer " + this.config.anonKey,
+          "Content-Type": "application/json",
+          Prefer: "return=representation"
+        },
+        body: JSON.stringify(row)
+      });
+      if (!response.ok) throw new Error("Could not submit request.");
+      return true;
+    },
+    updateStaffRequestStatus: async function (requestId, status) {
+      if (!this.config.url || !this.config.anonKey || !this.isSignedIn() || !navigator.onLine) return;
+      await fetch(this.config.url + "/rest/v1/staff_requests?id=eq." + encodeURIComponent(requestId), {
+        method: "PATCH",
+        headers: Object.assign({}, this.authHeaders(), {
+          "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({ status: status, updated_at: new Date().toISOString() })
+      });
     },
     fileToDataUrl: function (file) {
       return new Promise(function (resolve, reject) {
@@ -107,7 +277,7 @@
           method: "POST",
           headers: {
             apikey: this.config.anonKey,
-            Authorization: "Bearer " + this.config.anonKey,
+            Authorization: this.authHeaders().Authorization,
             "Content-Type": "application/json",
             Prefer: "resolution=merge-duplicates"
           },
@@ -122,18 +292,16 @@
       this.remoteLoaded = true;
       try {
         var response = await fetch(this.config.url + "/rest/v1/app_state?id=eq.local-mvp&select=data", {
-          headers: {
-            apikey: this.config.anonKey,
-            Authorization: "Bearer " + this.config.anonKey
-          }
+          headers: this.authHeaders()
         });
         if (!response.ok) return;
         var rows = await response.json();
         if (rows && rows[0] && rows[0].data && Array.isArray(rows[0].data.tasks) && rows[0].data.tasks.length) {
           this.state = migrateState(Object.assign(clone(seed), rows[0].data));
           localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-          window.CampOpsApp.render();
         }
+        await this.loadStaffRequests();
+        window.CampOpsApp.render();
       } catch (error) {
         console.warn("Supabase load failed", error);
       }
