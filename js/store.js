@@ -45,15 +45,42 @@
       if (locationNames[location.id]) location.name = locationNames[location.id];
     });
     var knownBuildings = {};
+    var seedBuildings = {};
+    (seed.buildings || []).forEach(function (building) {
+      seedBuildings[building.id] = building;
+    });
     state.buildings = state.buildings || [];
-    state.buildings.forEach(function (building) { knownBuildings[building.id] = true; });
+    state.buildings.forEach(function (building) {
+      knownBuildings[building.id] = true;
+      if (seedBuildings[building.id]) {
+        building.label = seedBuildings[building.id].label;
+        building.name = seedBuildings[building.id].name;
+        building.type = seedBuildings[building.id].type;
+        building.notes = seedBuildings[building.id].notes;
+      }
+    });
     (seed.buildings || []).forEach(function (building) {
       if (!knownBuildings[building.id]) state.buildings.push(clone(building));
     });
+    if (version < 8) {
+      state.rooms = (state.rooms || []).filter(function (room) {
+        return ["room-10e-zal", "room-10e-baking"].indexOf(room.id) < 0;
+      });
+    }
     var knownRooms = {};
+    var seedRooms = {};
+    (seed.rooms || []).forEach(function (room) {
+      seedRooms[room.id] = room;
+    });
     state.rooms = state.rooms || [];
     state.rooms.forEach(function (room) {
       knownRooms[room.id] = true;
+      if (seedRooms[room.id]) {
+        room.buildingId = seedRooms[room.id].buildingId;
+        room.name = seedRooms[room.id].name;
+        if (!room.assignment) room.assignment = seedRooms[room.id].assignment || "";
+        if (!room.notes && seedRooms[room.id].notes) room.notes = seedRooms[room.id].notes;
+      }
       room.assignment = room.assignment || "";
       room.beds = Number(room.beds || 0);
       room.bunkBeds = Number(room.bunkBeds || 0);
@@ -65,7 +92,7 @@
     (seed.rooms || []).forEach(function (room) {
       if (!knownRooms[room.id]) state.rooms.push(clone(room));
     });
-    state.schemaVersion = 7;
+    state.schemaVersion = 8;
     state.users = state.users && state.users.length ? state.users : clone(seed.users);
     state.users.forEach(function (user) {
       user.role = user.role || "worker";

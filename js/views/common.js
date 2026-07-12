@@ -3,10 +3,21 @@
   window.CampOpsViews = {
     locationSelect: function (id, selected) {
       selected = selected || "";
-      var locationOptions = C.state.locations.map(function (location) {
+      function sortKey(item) {
+        var text = String(item.name || item.label || item.id || "").toLowerCase();
+        var match = text.match(/#(\d+)/) || String(item.id || "").match(/^(\d+)/);
+        var number = match ? Number(match[1]) : 9999;
+        var letter = String(item.id || "").replace(/^\d+/, "") || " ";
+        return number.toString().padStart(4, "0") + "-" + letter + "-" + text;
+      }
+      var locationOptions = C.state.locations.slice().sort(function (a, b) {
+        return sortKey(a).localeCompare(sortKey(b));
+      }).map(function (location) {
         return "<option value=\"" + location.id + "\" " + (location.id === selected ? "selected" : "") + ">" + C.esc(location.name) + "</option>";
       }).join("");
-      var roomOptions = (C.state.rooms || []).map(function (room) {
+      var roomOptions = (C.state.rooms || []).slice().sort(function (a, b) {
+        return sortKey({ id: a.buildingId, name: C.locationName(a.id) }).localeCompare(sortKey({ id: b.buildingId, name: C.locationName(b.id) }));
+      }).map(function (room) {
         return "<option value=\"" + room.id + "\" " + (room.id === selected ? "selected" : "") + ">" + C.esc(C.locationName(room.id)) + "</option>";
       }).join("");
       return "<select id=\"" + id + "\"><optgroup label=\"Buildings and main spaces\">" + locationOptions + "</optgroup><optgroup label=\"Rooms and specific spaces\">" + roomOptions + "</optgroup></select>";

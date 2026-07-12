@@ -16,7 +16,7 @@
   }
 
   window.CampOpsSeed = {
-    schemaVersion: 7,
+    schemaVersion: 8,
     users: [
       { id: "u-mendy", name: "Mendy", email: "", role: "owner", team: "Operations" },
       { id: "u-malka", name: "Malka Aisenbach", email: "", role: "director", team: "Director" },
@@ -39,7 +39,7 @@
     locations: [
       ["10c", "Building #10C - Medical Center", "Medical"],
       ["10d", "Building #10D - Kiddie Camp Room", "Kiddie Camp"],
-      ["10e", "Building #10E - Zal / Baking Kitchen", "Kitchen"],
+      ["10e", "Building #10 - Room E - Zal / Baking", "Kitchen"],
       ["11e", "Building #11E - Smaller Kiddie Camp Room", "Kiddie Camp"],
       ["13", "Building #13 - Main Building", "Main"],
       ["13-basement", "Building #13 - Basement / TC Shul", "Shul"],
@@ -124,7 +124,7 @@
       { id: "13", label: "Building #13", name: "Main Building", type: "Building", notes: "Dining room, TC Shul basement, laundry rooms, kitchen storage, and main operations spaces." },
       { id: "10c", label: "Building #10C", name: "Medical Center", type: "Building", notes: "" },
       { id: "10d", label: "Building #10D", name: "Kiddie Camp Room", type: "Building", notes: "" },
-      { id: "10e", label: "Building #10E", name: "Zal / Baking Kitchen", type: "Building", notes: "" },
+      { id: "10e", label: "Building #10", name: "Room E - Zal / Baking", type: "Building", notes: "" },
       { id: "11e", label: "Building #11E", name: "Smaller Kiddie Camp Room", type: "Building", notes: "" },
       { id: "11f", label: "Building #11F", name: "Admin Office", type: "Building", notes: "" },
       { id: "12", label: "Building #12", name: "Waitros Lounge / Basketball Court", type: "Building", notes: "" },
@@ -144,8 +144,7 @@
       { id: "room-13-kitchen-storage", buildingId: "13", name: "Kitchen Storage Room", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "3 fridges plus chest freezers lining the walls." },
       { id: "room-10c-main", buildingId: "10c", name: "Medical Center Main Room", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
       { id: "room-10d-main", buildingId: "10d", name: "Kiddie Camp Room", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
-      { id: "room-10e-zal", buildingId: "10e", name: "Zal", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
-      { id: "room-10e-baking", buildingId: "10e", name: "Baking Kitchen", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
+      { id: "room-10e-zal-baking", buildingId: "10e", name: "Room E - Zal / Baking", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
       { id: "room-11e-main", buildingId: "11e", name: "Smaller Kiddie Camp Room", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
       { id: "room-11f-office", buildingId: "11f", name: "Admin Office", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
       { id: "room-12-lounge", buildingId: "12", name: "Waitros Lounge", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" },
@@ -190,44 +189,44 @@
   }
 
   [
-    ["1a", "Building #1A", "House / Bunk House", "House", ""],
-    ["1b", "Building #1B", "House / Bunk House", "House", ""],
-    ["3a", "Building #3A", "House / Bunk House", "House", ""],
-    ["3b", "Building #3B", "House / Bunk House", "House", ""],
-    ["4a", "Building #4A", "House / Bunk House", "House", ""],
-    ["4b", "Building #4B", "Teen 8 House", "House", ""],
-    ["4c", "Building #4C", "House / Bunk House", "House", ""],
-    ["4d", "Building #4D", "House / Bunk House", "House", ""],
-    ["4e", "Building #4E", "Teen 7 House", "House", ""],
-    ["5a", "Building #5A", "Teen 3 House", "House", ""],
-    ["5b", "Building #5B", "Teen 4 House", "House", ""],
-    ["6a", "Building #6A", "Teen 1 House", "House", ""],
-    ["6b", "Building #6B", "Teen 2 House", "House", ""],
-    ["7a", "Building #7A", "Teen 6 House", "House", ""],
-    ["7b", "Building #7B", "Teen 5 House", "House", ""],
-    ["9a", "Building #9A", "Bunk Alef", "Bunk House", ""],
-    ["9b", "Building #9B", "Lifeguards", "Staff", ""],
-    ["9c", "Building #9C", "Bunk Yud Alef", "Bunk House", ""],
-    ["9d", "Building #9D", "Bunk Yud Daled", "Bunk House", ""],
-    ["9e", "Building #9E", "7th Staff", "Staff", ""],
-    ["9f", "Building #9F", "Bathrooms", "Bathrooms", ""],
-    ["9g", "Building #9G", "Bunk Yud Gimmel", "Bunk House", ""],
-    ["9h", "Building #9H", "Bunk Beis", "Bunk House", ""],
-    ["9i", "Building #9I", "Bunk Yud Beis", "Bunk House", ""],
-    ["9j", "Building #9J", "KCC", "Program", ""],
-    ["10a", "Building #10A", "Bunk / House", "House", ""],
-    ["10b", "Building #10B", "Bunk / House", "House", ""],
-    ["10c", "Building #10C", "Medical Center", "Building", ""],
-    ["10d", "Building #10D", "Kiddie Camp Room", "Building", ""],
-    ["10e", "Building #10E", "Zal / Baking Kitchen", "Building", ""],
-    ["11a", "Building #11A", "House / Bunk House", "House", ""],
-    ["11b", "Building #11B", "House / Bunk House", "House", ""],
-    ["11c", "Building #11C", "House / Bunk House", "House", ""],
-    ["11d", "Building #11D", "House / Bunk House", "House", ""]
+    ["1a", "Building #1", "Room A - House / Bunk House", "House", ""],
+    ["1b", "Building #1", "Room B - House / Bunk House", "House", ""],
+    ["3a", "Building #3", "Room A - House / Bunk House", "House", ""],
+    ["3b", "Building #3", "Room B - House / Bunk House", "House", ""],
+    ["4a", "Building #4", "Room A - House / Bunk House", "House", ""],
+    ["4b", "Building #4", "Room B - Teen 8", "House", ""],
+    ["4c", "Building #4", "Room C - House / Bunk House", "House", ""],
+    ["4d", "Building #4", "Room D - House / Bunk House", "House", ""],
+    ["4e", "Building #4", "Room E - Teen 7", "House", ""],
+    ["5a", "Building #5", "Room A - Teen 3", "House", ""],
+    ["5b", "Building #5", "Room B - Teen 4", "House", ""],
+    ["6a", "Building #6", "Room A - Teen 1", "House", ""],
+    ["6b", "Building #6", "Room B - Teen 2", "House", ""],
+    ["7a", "Building #7", "Room A - Teen 6", "House", ""],
+    ["7b", "Building #7", "Room B - Teen 5", "House", ""],
+    ["9a", "Building #9", "Room A - Bunk Alef", "Bunk House", ""],
+    ["9b", "Building #9", "Room B - Lifeguards", "Staff", ""],
+    ["9c", "Building #9", "Room C - Bunk Yud Alef", "Bunk House", ""],
+    ["9d", "Building #9", "Room D - Bunk Yud Daled", "Bunk House", ""],
+    ["9e", "Building #9", "Room E - 7th Staff", "Staff", ""],
+    ["9f", "Building #9", "Room F - Bathrooms", "Bathrooms", ""],
+    ["9g", "Building #9", "Room G - Bunk Yud Gimmel", "Bunk House", ""],
+    ["9h", "Building #9", "Room H - Bunk Beis", "Bunk House", ""],
+    ["9i", "Building #9", "Room I - Bunk Yud Beis", "Bunk House", ""],
+    ["9j", "Building #9", "Room J - KCC", "Program", ""],
+    ["10a", "Building #10", "Room A - Bunk / House", "House", ""],
+    ["10b", "Building #10", "Room B - Bunk / House", "House", ""],
+    ["10c", "Building #10", "Room C - Medical Center", "Building", ""],
+    ["10d", "Building #10", "Room D - Kiddie Camp", "Building", ""],
+    ["10e", "Building #10", "Room E - Zal / Baking", "Building", ""],
+    ["11a", "Building #11", "Apartment A - House / Bunk House", "House", ""],
+    ["11b", "Building #11", "Apartment B - House / Bunk House", "House", ""],
+    ["11c", "Building #11", "Apartment C - Pruss Family", "House", "Two-floor apartment."],
+    ["11d", "Building #11", "Apartment D - House / Bunk House", "House", ""]
   ].forEach(function (item) {
     addLocation(item[0], item[1] + " - " + item[2], item[3]);
     addBuilding(item[0], item[1], item[2], item[3], item[4]);
-    addRoom("room-" + item[0] + "-main", item[0], "Main space", item[2], "");
+    addRoom("room-" + item[0] + "-main", item[0], item[2], "", "");
   });
 
   [

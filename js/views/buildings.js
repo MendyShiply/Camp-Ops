@@ -7,10 +7,18 @@
     return "<input data-room-field=\"" + C.esc(field) + "\" data-room-id=\"" + C.esc(room.id) + "\" type=\"" + type + "\" value=\"" + C.esc(value) + "\">";
   }
 
+  function buildingSortKey(building) {
+    var text = (building.label || building.id || "").toLowerCase();
+    var match = text.match(/#(\d+)/) || String(building.id || "").match(/^(\d+)/);
+    var number = match ? Number(match[1]) : 9999;
+    var letter = String(building.id || "").replace(/^\d+/, "") || " ";
+    return number.toString().padStart(4, "0") + "-" + letter;
+  }
+
   function roomRow(room) {
     return "<tr>" +
-      "<td><strong>" + C.esc(room.name) + "</strong></td>" +
-      "<td>" + roomInput(room, "assignment", "text") + "</td>" +
+      "<td><strong>" + C.esc(room.name) + "</strong>" +
+        "<label class=\"inline-room-field\"><span>Bunk or family</span>" + roomInput(room, "assignment", "text") + "</label></td>" +
       "<td>" + roomInput(room, "beds", "number") + "</td>" +
       "<td>" + roomInput(room, "bunkBeds", "number") + "</td>" +
       "<td>" + roomInput(room, "toilets", "number") + "</td>" +
@@ -53,14 +61,16 @@
         "<span><strong>$" + estCost.toFixed(0) + "</strong> estimated</span>" +
         "<span><strong>$" + actualCost.toFixed(0) + "</strong> actual</span>" +
       "</div>" +
-      "<div class=\"table-wrap room-table\"><table><thead><tr><th>Room / space</th><th>Bunk or family assigned</th><th>Beds</th><th>Bunk beds</th><th>Toilets</th><th>Sinks</th><th>Showers</th><th>Notes</th></tr></thead><tbody>" +
-        (rooms.length ? rooms.map(roomRow).join("") : "<tr><td colspan=\"8\" class=\"muted\">No rooms added yet.</td></tr>") +
+      "<div class=\"table-wrap room-table\"><table><thead><tr><th>Room / apartment / assignment</th><th>Beds</th><th>Bunk beds</th><th>Toilets</th><th>Sinks</th><th>Showers</th><th>Notes</th></tr></thead><tbody>" +
+        (rooms.length ? rooms.map(roomRow).join("") : "<tr><td colspan=\"7\" class=\"muted\">No rooms added yet.</td></tr>") +
       "</tbody></table></div>" +
     "</section>";
   }
 
   V.buildings = function () {
-    var buildings = C.state.buildings || [];
+    var buildings = (C.state.buildings || []).slice().sort(function (a, b) {
+      return buildingSortKey(a).localeCompare(buildingSortKey(b));
+    });
     return "<div class=\"topbar page-hero\"><div><h2>Buildings & Rooms</h2><p class=\"muted\">Track which bunk or family is in each space, plus beds and bathroom fixtures.</p></div><button class=\"btn\" id=\"new-building\">Add building</button></div>" +
       "<section class=\"building-list\">" + buildings.map(buildingCard).join("") + "</section>";
   };

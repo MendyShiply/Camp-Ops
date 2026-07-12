@@ -486,11 +486,21 @@
 
 .room-table th:first-child,
 .room-table td:first-child,
-.room-table th:nth-child(2),
-.room-table td:nth-child(2),
 .room-table th:last-child,
 .room-table td:last-child {
   min-width: 190px;
+}
+
+.inline-room-field {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.inline-room-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .room-table input,
