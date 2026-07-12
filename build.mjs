@@ -33,6 +33,7 @@ const assetFiles = [
   "manifest.json",
   "sw.js",
   "supabase-schema.sql",
+  "js/config.js",
   "js/data.js",
   "js/store.js",
   "js/views/common.js",
@@ -42,6 +43,7 @@ const assetFiles = [
   "js/views/supplies.js",
   "js/views/clock.js",
   "js/views/schedule.js",
+  "js/views/employees.js",
   "js/views/users.js",
   "js/app-main.js"
 ];
