@@ -1,9 +1,20 @@
-const CACHE_NAME = "camp-ops-v1";
+const CACHE_NAME = "camp-ops-v2";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
-  "./app.js",
+  "./task-layout.css",
+  "./js/data.js",
+  "./js/store.js",
+  "./js/views/common.js",
+  "./js/views/dashboard.js",
+  "./js/views/tasks.js",
+  "./js/views/requests.js",
+  "./js/views/supplies.js",
+  "./js/views/clock.js",
+  "./js/views/schedule.js",
+  "./js/views/users.js",
+  "./js/app-main.js",
   "./manifest.json"
 ];
 
