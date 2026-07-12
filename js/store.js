@@ -38,7 +38,37 @@
         if (!knownLocations[location.id]) state.locations.push(clone(location));
       });
     }
-    state.schemaVersion = 5;
+    if (version < 6) {
+      var locationNames = {};
+      seed.locations.forEach(function (location) {
+        locationNames[location.id] = location.name;
+      });
+      (state.locations || []).forEach(function (location) {
+        if (locationNames[location.id]) location.name = locationNames[location.id];
+      });
+    }
+    var knownBuildings = {};
+    state.buildings = state.buildings || [];
+    state.buildings.forEach(function (building) { knownBuildings[building.id] = true; });
+    (seed.buildings || []).forEach(function (building) {
+      if (!knownBuildings[building.id]) state.buildings.push(clone(building));
+    });
+    var knownRooms = {};
+    state.rooms = state.rooms || [];
+    state.rooms.forEach(function (room) {
+      knownRooms[room.id] = true;
+      room.assignment = room.assignment || "";
+      room.beds = Number(room.beds || 0);
+      room.bunkBeds = Number(room.bunkBeds || 0);
+      room.toilets = Number(room.toilets || 0);
+      room.sinks = Number(room.sinks || 0);
+      room.showers = Number(room.showers || 0);
+      room.notes = room.notes || "";
+    });
+    (seed.rooms || []).forEach(function (room) {
+      if (!knownRooms[room.id]) state.rooms.push(clone(room));
+    });
+    state.schemaVersion = 6;
     state.users = state.users && state.users.length ? state.users : clone(seed.users);
     state.users.forEach(function (user) {
       user.role = user.role || "worker";
@@ -87,7 +117,7 @@
         url: normalizeSupabaseUrl(next.url),
         anonKey: next.anonKey
       };
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(this.config));
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
       this.remoteLoaded = false;
     },
     authUser: function () {
@@ -181,8 +211,8 @@
       if (view === "requestForm") return true;
       if (role === "owner") return true;
       if (role === "director") return view !== "settings";
-      if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "employees"].indexOf(view) >= 0;
-      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule"].indexOf(view) >= 0;
+      if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "employees", "buildings"].indexOf(view) >= 0;
+      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "buildings"].indexOf(view) >= 0;
       return view === "requestForm";
     },
     locationName: function (id) {

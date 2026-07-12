@@ -11,7 +11,8 @@
       ["supplies", "Supplies & Tools"],
       ["clock", "Clock In/Out"],
       ["schedule", "Schedule"],
-      ["employees", "Employees"]
+      ["employees", "Employees"],
+      ["buildings", "Buildings"]
     ];
     if (C.canManageUsers()) items.push(["users", "Users"]);
     if (C.isOwner()) items.push(["settings", "Settings"]);
@@ -27,6 +28,7 @@
     if (C.view === "clock") return V.clock();
     if (C.view === "schedule") return V.schedule();
     if (C.view === "employees") return V.employees();
+    if (C.view === "buildings") return V.buildings();
     if (C.view === "users") return V.users();
     if (C.view === "settings") return V.settings();
     return V.dashboard();
@@ -124,6 +126,14 @@
     if (newTask) newTask.addEventListener("click", createTask);
     var newEmployee = document.getElementById("new-employee");
     if (newEmployee) newEmployee.addEventListener("click", createEmployee);
+    var newBuilding = document.getElementById("new-building");
+    if (newBuilding) newBuilding.addEventListener("click", createBuilding);
+    document.querySelectorAll("[data-add-room]").forEach(function (button) {
+      button.addEventListener("click", function () { createRoom(button.dataset.addRoom); });
+    });
+    document.querySelectorAll("[data-room-field]").forEach(function (input) {
+      input.addEventListener("change", function () { updateRoomField(input); });
+    });
     var newUser = document.getElementById("new-user");
     if (newUser) newUser.addEventListener("click", createUser);
     var loginSubmit = document.getElementById("login-submit");
@@ -266,6 +276,34 @@
     var name = prompt("Employee display name?");
     if (!name) return;
     C.state.employees.push({ id: C.uid("emp"), userId: "", displayName: name, firstName: name, lastName: "", team: "", role: "Worker", payRate: "", email: "", phone: "", idPhoto: "", notes: "" });
+    C.save();
+    render();
+  }
+
+  function createBuilding() {
+    var label = prompt("Building label? Example: Building #14");
+    if (!label) return;
+    var name = prompt("Building or house name?");
+    if (!name) return;
+    C.state.buildings.push({ id: C.uid("bldg"), label: label, name: name, type: "Building", notes: "" });
+    C.save();
+    render();
+  }
+
+  function createRoom(buildingId) {
+    var name = prompt("Room or space name?");
+    if (!name) return;
+    C.state.rooms.push({ id: C.uid("room"), buildingId: buildingId, name: name, assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" });
+    C.save();
+    render();
+  }
+
+  function updateRoomField(input) {
+    var room = (C.state.rooms || []).find(function (item) { return item.id === input.dataset.roomId; });
+    if (!room) return;
+    var field = input.dataset.roomField;
+    if (["beds", "bunkBeds", "toilets", "sinks", "showers"].indexOf(field) >= 0) room[field] = Math.max(0, Number(input.value || 0));
+    else room[field] = input.value;
     C.save();
     render();
   }

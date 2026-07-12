@@ -44,6 +44,7 @@ const assetFiles = [
   "js/views/clock.js",
   "js/views/schedule.js",
   "js/views/employees.js",
+  "js/views/buildings.js",
   "js/views/users.js",
   "js/app-main.js"
 ];
