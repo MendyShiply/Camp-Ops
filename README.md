@@ -17,6 +17,21 @@ This is a first working version of the camp operations app.
 - Offline browser cache
 - Supabase sync through the `app_state` table
 
+## File structure
+
+The app is split by concept so changes stay safer:
+
+- `js/data.js` - starter users, locations, and recurring tasks
+- `js/store.js` - local storage, Supabase sync, helpers, and migration
+- `js/views/dashboard.js` - owner/director overview
+- `js/views/tasks.js` - compact task list and task detail/chat screen
+- `js/views/requests.js` - staff request form and approval queue
+- `js/views/supplies.js` - supplies, tools, gas, oil, and repair requests
+- `js/views/clock.js` - employee clock in/out and payroll table
+- `js/views/schedule.js` - schedule blocks and moving tasks
+- `js/views/users.js` - user switching and settings screen
+- `js/app-main.js` - main navigation and event wiring
+
 ## Setup
 
 1. Open Supabase.
