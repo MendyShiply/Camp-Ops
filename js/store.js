@@ -29,24 +29,21 @@
     if (version < 3 || !state.employees) {
       state.employees = clone(seed.employees);
     }
-    if (version < 4) {
-      var knownLocations = {};
-      (state.locations || []).forEach(function (location) {
-        knownLocations[location.id] = true;
-      });
-      seed.locations.forEach(function (location) {
-        if (!knownLocations[location.id]) state.locations.push(clone(location));
-      });
-    }
-    if (version < 6) {
-      var locationNames = {};
-      seed.locations.forEach(function (location) {
-        locationNames[location.id] = location.name;
-      });
-      (state.locations || []).forEach(function (location) {
-        if (locationNames[location.id]) location.name = locationNames[location.id];
-      });
-    }
+    var knownLocations = {};
+    state.locations = state.locations || [];
+    state.locations.forEach(function (location) {
+      knownLocations[location.id] = true;
+    });
+    seed.locations.forEach(function (location) {
+      if (!knownLocations[location.id]) state.locations.push(clone(location));
+    });
+    var locationNames = {};
+    seed.locations.forEach(function (location) {
+      locationNames[location.id] = location.name;
+    });
+    state.locations.forEach(function (location) {
+      if (locationNames[location.id]) location.name = locationNames[location.id];
+    });
     var knownBuildings = {};
     state.buildings = state.buildings || [];
     state.buildings.forEach(function (building) { knownBuildings[building.id] = true; });
@@ -68,7 +65,7 @@
     (seed.rooms || []).forEach(function (room) {
       if (!knownRooms[room.id]) state.rooms.push(clone(room));
     });
-    state.schemaVersion = 6;
+    state.schemaVersion = 7;
     state.users = state.users && state.users.length ? state.users : clone(seed.users);
     state.users.forEach(function (user) {
       user.role = user.role || "worker";
@@ -207,7 +204,7 @@
       { id: "director", label: "Director", detail: "All operations views, all tasks, approvals, and user access." },
       { id: "supervisor", label: "Supervisor", detail: "Operations views, all tasks, approvals, and employee records." },
       { id: "secretary", label: "Office secretary", detail: "Can enter staff requests and view request history, without admin settings." },
-      { id: "worker", label: "Worker", detail: "Assigned/team tasks, supplies, clock, schedule, and building reference." },
+      { id: "worker", label: "Employee", detail: "Assigned/team tasks, requests, supplies, clock, schedule, and building reference." },
       { id: "requester", label: "Request only", detail: "Login-required request entry without the operations dashboard." }
     ],
     roleLabel: function (role) {
@@ -223,7 +220,7 @@
       if (role === "director") return view !== "settings";
       if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "employees", "buildings"].indexOf(view) >= 0;
       if (role === "secretary") return ["dashboard", "requests", "requestForm", "clock", "schedule", "buildings"].indexOf(view) >= 0;
-      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "supplies", "clock", "schedule", "buildings"].indexOf(view) >= 0;
+      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "requestForm", "supplies", "clock", "schedule", "buildings"].indexOf(view) >= 0;
       return view === "requestForm";
     },
     locationName: function (id) {

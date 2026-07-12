@@ -37,7 +37,7 @@
     var blockedDeg = progressDeg + Math.round(blocked / total * 360);
 
     return "<div class=\"topbar page-hero\"><div><h2>Operations Dashboard</h2><p class=\"muted\">" + new Date().toISOString().slice(0, 10) + " - " +
-      (navigator.onLine ? "Online" : "Offline") + " - Supabase configured</p></div><button class=\"btn\" data-view=\"tasks\">Open board</button></div>" +
+      (navigator.onLine ? "Online" : "Offline") + " - Supabase configured</p></div></div>" +
       "<section class=\"dashboard-grid\">" +
         "<div class=\"panel chart-panel\"><div class=\"donut\" style=\"--done:" + doneDeg + "deg; --progress:" + progressDeg + "deg; --blocked:" + blockedDeg + "deg\"><strong>" + done + "</strong><span>done</span></div><div><h3>Task Mix</h3><p class=\"muted\">Live breakdown of today's operational work.</p><div class=\"legend\"><span><i class=\"ok-dot\"></i>Done " + done + "</span><span><i class=\"progress-dot\"></i>In progress " + progress + "</span><span><i class=\"blocked-dot\"></i>Blocked " + blocked + "</span><span><i class=\"open-dot\"></i>Open " + open + "</span></div></div></div>" +
         "<div class=\"metric-stack\"><div class=\"stat\"><span>Open tasks</span><strong>" + open + "</strong></div><div class=\"stat\"><span>Pending requests</span><strong>" + pending + "</strong></div><div class=\"stat\"><span>Supply/tool needs</span><strong>" + supplies + "</strong></div></div>" +

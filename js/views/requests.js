@@ -16,8 +16,8 @@
   };
 
   V.requests = function () {
-    return "<div class=\"topbar\"><div><h2>Requests</h2><p class=\"muted\">Staff/counselor requests wait here before becoming official tasks.</p></div>" +
-      "<button class=\"btn\" id=\"open-request-form\">New request</button></div><section class=\"panel share-panel\"><div><h3>Office-entered requests</h3><p class=\"muted\">Requests now require a login. Staff can report issues to the office secretary, who enters them here for admin review.</p></div><button class=\"btn secondary\" data-view=\"requestForm\">Open request form</button></section><section class=\"panel\">" + V.requestRows(C.state.requests) + "</section>";
+    return "<div class=\"topbar\"><div><h2>Requests</h2><p class=\"muted\">Employee requests wait here before becoming official tasks.</p></div>" +
+      "<button class=\"btn\" id=\"open-request-form\">New request</button></div><section class=\"panel share-panel\"><div><h3>Request entry</h3><p class=\"muted\">Anyone with Camp Ops access can submit a request while signed in.</p></div><button class=\"btn secondary\" data-view=\"requestForm\">Open request form</button></section><section class=\"panel\">" + V.requestRows(C.state.requests) + "</section>";
   };
 
   V.requestRows = function (requests) {

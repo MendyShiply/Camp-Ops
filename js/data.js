@@ -16,7 +16,7 @@
   }
 
   window.CampOpsSeed = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     users: [
       { id: "u-mendy", name: "Mendy", email: "", role: "owner", team: "Operations" },
       { id: "u-malka", name: "Malka Aisenbach", email: "", role: "director", team: "Director" },
@@ -157,4 +157,100 @@
       { id: "room-container-garage-dumpsters", buildingId: "container-garage-dumpsters", name: "Storage Container Interior", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" }
     ]
   };
+
+  var seed = window.CampOpsSeed;
+
+  function addLocation(id, name, category) {
+    if (!seed.locations.some(function (item) { return item.id === id; })) {
+      seed.locations.push({ id: id, name: name, category: category });
+    }
+  }
+
+  function addBuilding(id, label, name, type, notes) {
+    if (!seed.buildings.some(function (item) { return item.id === id; })) {
+      seed.buildings.push({ id: id, label: label, name: name, type: type || "Building", notes: notes || "" });
+    }
+  }
+
+  function addRoom(id, buildingId, name, assignment, notes) {
+    if (!seed.rooms.some(function (item) { return item.id === id; })) {
+      seed.rooms.push({
+        id: id,
+        buildingId: buildingId,
+        name: name,
+        assignment: assignment || "",
+        beds: 0,
+        bunkBeds: 0,
+        toilets: 0,
+        sinks: 0,
+        showers: 0,
+        notes: notes || ""
+      });
+    }
+  }
+
+  [
+    ["1a", "Building #1A", "House / Bunk House", "House", ""],
+    ["1b", "Building #1B", "House / Bunk House", "House", ""],
+    ["3a", "Building #3A", "House / Bunk House", "House", ""],
+    ["3b", "Building #3B", "House / Bunk House", "House", ""],
+    ["4a", "Building #4A", "House / Bunk House", "House", ""],
+    ["4b", "Building #4B", "Teen 8 House", "House", ""],
+    ["4c", "Building #4C", "House / Bunk House", "House", ""],
+    ["4d", "Building #4D", "House / Bunk House", "House", ""],
+    ["4e", "Building #4E", "Teen 7 House", "House", ""],
+    ["5a", "Building #5A", "Teen 3 House", "House", ""],
+    ["5b", "Building #5B", "Teen 4 House", "House", ""],
+    ["6a", "Building #6A", "Teen 1 House", "House", ""],
+    ["6b", "Building #6B", "Teen 2 House", "House", ""],
+    ["7a", "Building #7A", "Teen 6 House", "House", ""],
+    ["7b", "Building #7B", "Teen 5 House", "House", ""],
+    ["9a", "Building #9A", "Bunk Alef", "Bunk House", ""],
+    ["9b", "Building #9B", "Lifeguards", "Staff", ""],
+    ["9c", "Building #9C", "Bunk Yud Alef", "Bunk House", ""],
+    ["9d", "Building #9D", "Bunk Yud Daled", "Bunk House", ""],
+    ["9e", "Building #9E", "7th Staff", "Staff", ""],
+    ["9f", "Building #9F", "Bathrooms", "Bathrooms", ""],
+    ["9g", "Building #9G", "Bunk Yud Gimmel", "Bunk House", ""],
+    ["9h", "Building #9H", "Bunk Beis", "Bunk House", ""],
+    ["9i", "Building #9I", "Bunk Yud Beis", "Bunk House", ""],
+    ["9j", "Building #9J", "KCC", "Program", ""],
+    ["10a", "Building #10A", "Bunk / House", "House", ""],
+    ["10b", "Building #10B", "Bunk / House", "House", ""],
+    ["10c", "Building #10C", "Medical Center", "Building", ""],
+    ["10d", "Building #10D", "Kiddie Camp Room", "Building", ""],
+    ["10e", "Building #10E", "Zal / Baking Kitchen", "Building", ""],
+    ["11a", "Building #11A", "House / Bunk House", "House", ""],
+    ["11b", "Building #11B", "House / Bunk House", "House", ""],
+    ["11c", "Building #11C", "House / Bunk House", "House", ""],
+    ["11d", "Building #11D", "House / Bunk House", "House", ""]
+  ].forEach(function (item) {
+    addLocation(item[0], item[1] + " - " + item[2], item[3]);
+    addBuilding(item[0], item[1], item[2], item[3], item[4]);
+    addRoom("room-" + item[0] + "-main", item[0], "Main space", item[2], "");
+  });
+
+  [
+    ["room-13-fl1-dining", "Floor 1 - Dining Room", "", ""],
+    ["room-13-fl1-kitchen", "Floor 1 - Kitchen", "", ""],
+    ["room-13-fl1-headstaff-offices", "Floor 1 - Headstaff Offices", "Headstaff", ""],
+    ["room-13-fl2-headstaff-4b", "Floor 2 - Headstaff", "4B", ""],
+    ["room-13-fl2-counselors-3b", "Floor 2 - Counselors", "3B", ""],
+    ["room-13-fl2-bunk-hei-6b", "Floor 2 - Bunk Hei", "6B", ""],
+    ["room-13-fl2-bunk-daled-7b-8b-9b", "Floor 2 - Bunk Daled", "7B, 8B, 9B", ""],
+    ["room-13-fl2-bunk-gimmel-12b", "Floor 2 - Bunk Gimmel", "12B", ""],
+    ["room-13-fl2-bunk-vov-2b-1b", "Floor 2 - Bunk Vov", "2B, 1B", "Map notes also mention 10B and 11B as possible spaces."],
+    ["room-13-fl2-10b-11b", "Floor 2 - 10B / 11B possible rooms", "", "Needs final confirmation."],
+    ["room-13-fl3-counselors-4c", "Floor 3 - Counselors", "4C", ""],
+    ["room-13-fl3-bunk-tes-5c-6c", "Floor 3 - Bunk Tes", "5C, 6C", ""],
+    ["room-13-fl3-bunk-ches-7c-8c", "Floor 3 - Bunk Ches", "7C, 8C", ""],
+    ["room-13-fl3-bunk-zayin-12c-11c-10c", "Floor 3 - Bunk Zayin", "12C, 11C, 10C", ""],
+    ["room-13-fl3-bunk-yud-1c-2c", "Floor 3 - Bunk Yud", "1C, 2C", "2C was marked with a question mark on the map."],
+    ["room-13-fl3-headstaff-2c", "Floor 3 - Headstaff", "2C", ""],
+    ["room-13-fl3-9c-possible", "Floor 3 - 9C possible room", "", "Needs final confirmation."],
+    ["room-13-basement-canteen", "Basement - Canteen", "", ""],
+    ["room-13-basement-gyc-counselors-lounge", "Basement - CGI Chai Counselors Lounge", "", ""]
+  ].forEach(function (item) {
+    addRoom(item[0], "13", item[1], item[2], item[3]);
+  });
 })();

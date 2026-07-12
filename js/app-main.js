@@ -316,8 +316,9 @@
     if (!name) return;
     var email = prompt("Login email? This must match their Supabase Auth email.");
     if (!email) return;
-      var role = prompt("Access level: owner, director, supervisor, secretary, worker, or requester", "worker") || "worker";
-    role = role.toLowerCase().trim();
+      var role = prompt("Access level: owner, director, supervisor, secretary, employee, or requester", "employee") || "employee";
+      role = role.toLowerCase().trim();
+      if (role === "employee") role = "worker";
     if (!C.accessLevels.some(function (level) { return level.id === role; })) role = "worker";
     var team = prompt("Team?", role === "director" ? "Director" : "") || "";
     C.state.users.push({ id: C.uid("u"), name: name, email: email.trim(), role: role, team: team });
