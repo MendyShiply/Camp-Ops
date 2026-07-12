@@ -11,7 +11,7 @@
       ["done", "Done"]
     ];
     var tasks = C.visibleTasks();
-    return "<div class=\"topbar page-hero\"><div><h2>Task Board</h2><p class=\"muted\">Favro-style board: time blocks stacked vertically, status columns running side to side. Click a card to open the full task.</p></div>" +
+    return "<div class=\"topbar page-hero\"><div><h2>Task Board</h2><p class=\"muted\">Favro-style board: time blocks stacked vertically, status columns running side to side. Blocked means the task is waiting on supplies, approval, access, information, or help before it can be finished.</p></div>" +
       (C.isAdmin() ? "<button class=\"btn\" id=\"new-task\">New task</button>" : "") +
       "</div><section class=\"favro-board\">" + blocks.map(function (block) {
         return "<div class=\"board-lane\"><div class=\"lane-title\"><strong>" + block + "</strong><span>" + tasks.filter(function (task) { return (task.scheduleBlock || "Unscheduled") === block; }).length + " tasks</span></div><div class=\"board-columns\">" +
@@ -38,7 +38,8 @@
       "<button class=\"btn secondary\" data-view=\"tasks\">Back to board</button></div>" +
       "<div class=\"task-detail full-task-detail\">" +
         "<div class=\"panel task-primary\"><div class=\"task-title\"><h3>Task details</h3><span class=\"pill " + statusClass + "\">" + C.esc(task.status.replace("_", " ")) + "</span></div>" +
-          "<div class=\"detail-grid\"><div><span>Team</span><strong>" + C.esc(task.assignedTeam || "No team") + "</strong></div><div><span>Priority</span><strong>" + C.esc(task.priority) + "</strong></div><div><span>Time</span><strong>" + C.esc(task.scheduleBlock || "Unscheduled") + "</strong></div><div><span>Due</span><strong>" + C.esc(task.dueTime || "none") + "</strong></div></div>" +
+          "<div class=\"detail-grid\"><div><span>Team</span><strong>" + C.esc(task.assignedTeam || "No team") + "</strong></div><div><span>Priority</span><strong>" + C.esc(task.priority) + "</strong></div><div><span>Time</span><strong>" + C.esc(task.scheduleBlock || "Unscheduled") + "</strong></div><div><span>Due</span><strong>" + C.esc(task.dueTime || "none") + "</strong></div>" +
+          "<div><span>Category</span><strong>" + C.esc(task.category || task.type || "Task") + "</strong></div><div><span>Estimated cost</span><strong>$" + Number(task.costEstimate || 0).toFixed(2) + "</strong></div><div><span>Actual cost</span><input data-task-cost=\"" + C.esc(task.id) + "\" type=\"number\" min=\"0\" step=\"0.01\" value=\"" + Number(task.costActual || 0) + "\"></div></div>" +
           "<h4>Subtasks / Standard</h4><ul class=\"subtasks check-standard\">" + (task.subtasks || []).map(function (subtask) { return "<li>" + C.esc(subtask) + "</li>"; }).join("") + "</ul>" +
           "<div class=\"actions\"><button class=\"btn secondary\" data-task-action=\"progress\" data-task-id=\"" + task.id + "\">Start</button>" +
           "<button class=\"btn\" data-task-action=\"done\" data-task-id=\"" + task.id + "\">Done</button>" +

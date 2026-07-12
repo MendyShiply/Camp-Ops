@@ -3,9 +3,13 @@
   window.CampOpsViews = {
     locationSelect: function (id, selected) {
       selected = selected || "";
-      return "<select id=\"" + id + "\">" + C.state.locations.map(function (location) {
+      var locationOptions = C.state.locations.map(function (location) {
         return "<option value=\"" + location.id + "\" " + (location.id === selected ? "selected" : "") + ">" + C.esc(location.name) + "</option>";
-      }).join("") + "</select>";
+      }).join("");
+      var roomOptions = (C.state.rooms || []).map(function (room) {
+        return "<option value=\"" + room.id + "\" " + (room.id === selected ? "selected" : "") + ">" + C.esc(C.locationName(room.id)) + "</option>";
+      }).join("");
+      return "<select id=\"" + id + "\"><optgroup label=\"Buildings and main spaces\">" + locationOptions + "</optgroup><optgroup label=\"Rooms and specific spaces\">" + roomOptions + "</optgroup></select>";
     },
     taskRows: function (tasks) {
       if (!tasks.length) return "<div class=\"empty\">Nothing here right now.</div>";

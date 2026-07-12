@@ -22,6 +22,14 @@
 
   function buildingCard(building) {
     var rooms = (C.state.rooms || []).filter(function (room) { return room.buildingId === building.id; });
+    var locationIds = {};
+    locationIds[building.id] = true;
+    rooms.forEach(function (room) { locationIds[room.id] = true; });
+    var relatedRequests = (C.state.requests || []).filter(function (request) { return locationIds[request.locationId]; });
+    var relatedTasks = (C.state.tasks || []).filter(function (task) { return locationIds[task.locationId]; });
+    var estCost = relatedRequests.reduce(function (sum, request) { return sum + Number(request.costEstimate || 0); }, 0) +
+      relatedTasks.reduce(function (sum, task) { return sum + Number(task.costEstimate || 0); }, 0);
+    var actualCost = relatedTasks.reduce(function (sum, task) { return sum + Number(task.costActual || 0); }, 0);
     var totals = rooms.reduce(function (sum, room) {
       sum.beds += Number(room.beds || 0);
       sum.bunkBeds += Number(room.bunkBeds || 0);
@@ -41,6 +49,9 @@
         "<span><strong>" + totals.toilets + "</strong> toilets</span>" +
         "<span><strong>" + totals.sinks + "</strong> sinks</span>" +
         "<span><strong>" + totals.showers + "</strong> showers</span>" +
+        "<span><strong>" + relatedRequests.length + "</strong> requests</span>" +
+        "<span><strong>$" + estCost.toFixed(0) + "</strong> estimated</span>" +
+        "<span><strong>$" + actualCost.toFixed(0) + "</strong> actual</span>" +
       "</div>" +
       "<div class=\"table-wrap room-table\"><table><thead><tr><th>Room / space</th><th>Bunk or family assigned</th><th>Beds</th><th>Bunk beds</th><th>Toilets</th><th>Sinks</th><th>Showers</th><th>Notes</th></tr></thead><tbody>" +
         (rooms.length ? rooms.map(roomRow).join("") : "<tr><td colspan=\"8\" class=\"muted\">No rooms added yet.</td></tr>") +

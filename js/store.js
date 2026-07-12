@@ -75,6 +75,16 @@
       user.team = user.team || "";
     });
     state.requests = state.requests || [];
+    state.requests.forEach(function (request) {
+      request.category = request.category || "Other";
+      request.costEstimate = Number(request.costEstimate || 0);
+    });
+    state.tasks = state.tasks || [];
+    state.tasks.forEach(function (task) {
+      task.category = task.category || "";
+      task.costEstimate = Number(task.costEstimate || 0);
+      task.costActual = Number(task.costActual || 0);
+    });
     state.supplyRequests = state.supplyRequests || [];
     state.timeEntries = state.timeEntries || [];
     return state;
@@ -196,8 +206,9 @@
       { id: "owner", label: "Owner", detail: "Full access, settings, users, and every operations view." },
       { id: "director", label: "Director", detail: "All operations views, all tasks, approvals, and user access." },
       { id: "supervisor", label: "Supervisor", detail: "Operations views, all tasks, approvals, and employee records." },
-      { id: "worker", label: "Worker", detail: "Assigned/team tasks, requests, supplies, clock, and schedule." },
-      { id: "requester", label: "Request only", detail: "Can submit requests but does not use the operations dashboard." }
+      { id: "secretary", label: "Office secretary", detail: "Can enter staff requests and view request history, without admin settings." },
+      { id: "worker", label: "Worker", detail: "Assigned/team tasks, supplies, clock, schedule, and building reference." },
+      { id: "requester", label: "Request only", detail: "Login-required request entry without the operations dashboard." }
     ],
     roleLabel: function (role) {
       var found = this.accessLevels.find(function (level) { return level.id === role; });
@@ -208,16 +219,22 @@
     },
     canAccess: function (view) {
       var role = this.me().role;
-      if (view === "requestForm") return true;
       if (role === "owner") return true;
       if (role === "director") return view !== "settings";
       if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "employees", "buildings"].indexOf(view) >= 0;
-      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "buildings"].indexOf(view) >= 0;
+      if (role === "secretary") return ["dashboard", "requests", "requestForm", "clock", "schedule", "buildings"].indexOf(view) >= 0;
+      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "supplies", "clock", "schedule", "buildings"].indexOf(view) >= 0;
       return view === "requestForm";
     },
     locationName: function (id) {
       var location = this.state.locations.find(function (item) { return item.id === id; });
-      return location ? location.name : (id || "No location");
+      if (location) return location.name;
+      var room = (this.state.rooms || []).find(function (item) { return item.id === id; });
+      if (room) {
+        var building = (window.CampOps.state.buildings || []).find(function (item) { return item.id === room.buildingId; });
+        return (building ? building.label + " - " : "") + room.name;
+      }
+      return id || "No location";
     },
     visibleTasks: function () {
       var self = this;

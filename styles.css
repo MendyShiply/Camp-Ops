@@ -27,6 +27,11 @@ body {
   line-height: 1.45;
 }
 
+html,
+body {
+  min-height: 100%;
+}
+
 button,
 input,
 select,
@@ -43,6 +48,7 @@ button {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px 1fr;
+  align-items: start;
 }
 
 .sidebar {
@@ -52,6 +58,10 @@ button {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .brand {
@@ -111,13 +121,12 @@ button {
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  display: grid;
-  gap: 8px;
 }
 
 .main {
   padding: 28px;
   overflow-x: hidden;
+  min-width: 0;
 }
 
 .topbar,
@@ -548,6 +557,38 @@ th {
   display: none;
 }
 
+@media (max-width: 1180px) {
+  .app-shell {
+    grid-template-columns: 230px 1fr;
+  }
+
+  .main {
+    padding: 20px;
+  }
+
+  .cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-card,
+  .task-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .task-card > :not(.chat),
+  .chat {
+    grid-column: 1;
+  }
+
+  .chat {
+    grid-row: auto;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: 10px;
+  }
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -559,6 +600,9 @@ th {
 
   .mobile-top {
     display: block;
+    position: sticky;
+    top: 0;
+    z-index: 20;
     background: #173e39;
     color: white;
     padding: 12px;
@@ -573,6 +617,10 @@ th {
 
   .main {
     padding: 14px;
+  }
+
+  .page-hero h2 {
+    font-size: 24px;
   }
 
   .cols-4,
@@ -614,6 +662,27 @@ th {
   }
 
   .share-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .main {
+    padding: 10px;
+  }
+
+  .panel,
+  .login-card,
+  .stat {
+    padding: 14px;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .actions {
     align-items: stretch;
     flex-direction: column;
   }

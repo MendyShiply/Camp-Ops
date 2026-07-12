@@ -35,12 +35,6 @@
   }
 
   function render() {
-    if (C.view === "requestForm") {
-      app.innerHTML = V.requestOnly();
-      bind();
-      return;
-    }
-
     if (!C.config.url || !C.config.anonKey) {
       app.innerHTML = V.setup();
       bind();
@@ -121,6 +115,15 @@
     });
     document.querySelectorAll("[data-task-action]").forEach(function (button) {
       button.addEventListener("click", function () { handleTaskAction(button); });
+    });
+    document.querySelectorAll("[data-task-cost]").forEach(function (input) {
+      input.addEventListener("change", function () {
+        var task = C.taskById(input.dataset.taskCost);
+        if (!task) return;
+        task.costActual = Math.max(0, Number(input.value || 0));
+        C.save();
+        render();
+      });
     });
     var newTask = document.getElementById("new-task");
     if (newTask) newTask.addEventListener("click", createTask);
@@ -313,7 +316,7 @@
     if (!name) return;
     var email = prompt("Login email? This must match their Supabase Auth email.");
     if (!email) return;
-    var role = prompt("Access level: owner, director, supervisor, worker, or requester", "worker") || "worker";
+      var role = prompt("Access level: owner, director, supervisor, secretary, worker, or requester", "worker") || "worker";
     role = role.toLowerCase().trim();
     if (!C.accessLevels.some(function (level) { return level.id === role; })) role = "worker";
     var team = prompt("Team?", role === "director" ? "Director" : "") || "";
@@ -328,7 +331,7 @@
     if (!email || !password) return alert("Please enter email and password.");
     try {
       await C.signIn(email, password);
-      C.view = C.me().role === "requester" ? "requestForm" : "dashboard";
+      if (!C.canAccess(C.view)) C.view = C.me().role === "requester" ? "requestForm" : "dashboard";
       await C.hydrateSupabase();
       render();
     } catch (error) {
@@ -344,6 +347,7 @@
       locationId: document.getElementById("request-location").value,
       category: document.getElementById("request-category").value,
       urgency: document.getElementById("request-urgency").value,
+      costEstimate: Number(document.getElementById("request-cost-estimate").value || 0),
       details: document.getElementById("request-details").value.trim(),
       status: "pending",
       createdAt: new Date().toISOString(),
@@ -388,6 +392,9 @@
       scheduleBlock: "Unscheduled",
       type: "request",
       requestId: request.id,
+      category: request.category,
+      costEstimate: Number(request.costEstimate || 0),
+      costActual: 0,
       subtasks: [request.details].filter(Boolean),
       chat: [{ id: C.uid("m"), authorName: request.requester, text: request.details, createdAt: request.createdAt }]
     });
