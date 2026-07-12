@@ -1,9 +1,8 @@
--- Camp Ops MVP schema.
+-- Camp Ops schema.
 -- Run this in Supabase SQL Editor.
 --
--- This first version stores the app state in one JSON row so the camp can use it
--- immediately. The normalized production tables can be added next without losing
--- this data.
+-- Passwords and login accounts are managed in Supabase Authentication.
+-- Create Auth users in Supabase, then add matching emails on the Camp Ops Users page.
 
 create table if not exists public.app_state (
   id text primary key,
@@ -11,7 +10,23 @@ create table if not exists public.app_state (
   updated_at timestamptz not null default now()
 );
 
-alter table public.app_state disable row level security;
+alter table public.app_state enable row level security;
+
+drop policy if exists "Authenticated operators can read app state" on public.app_state;
+drop policy if exists "Authenticated operators can write app state" on public.app_state;
+
+create policy "Authenticated operators can read app state"
+on public.app_state
+for select
+to authenticated
+using (true);
+
+create policy "Authenticated operators can write app state"
+on public.app_state
+for all
+to authenticated
+using (true)
+with check (true);
 
 insert into public.app_state (id, data)
 values ('local-mvp', '{}'::jsonb)
@@ -84,6 +99,31 @@ create table if not exists public.staff_requests (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.staff_requests enable row level security;
+
+drop policy if exists "Anyone can submit staff requests" on public.staff_requests;
+drop policy if exists "Authenticated operators can read staff requests" on public.staff_requests;
+drop policy if exists "Authenticated operators can update staff requests" on public.staff_requests;
+
+create policy "Anyone can submit staff requests"
+on public.staff_requests
+for insert
+to anon, authenticated
+with check (true);
+
+create policy "Authenticated operators can read staff requests"
+on public.staff_requests
+for select
+to authenticated
+using (true);
+
+create policy "Authenticated operators can update staff requests"
+on public.staff_requests
+for update
+to authenticated
+using (true)
+with check (true);
 
 create table if not exists public.supply_requests (
   id uuid primary key default gen_random_uuid(),
