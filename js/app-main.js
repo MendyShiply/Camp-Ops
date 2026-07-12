@@ -13,12 +13,13 @@
       ["schedule", "Schedule"],
       ["employees", "Employees"]
     ];
-    if (C.isAdmin()) items.push(["users", "Users"]);
+    if (C.canManageUsers()) items.push(["users", "Users"]);
     if (C.isOwner()) items.push(["settings", "Settings"]);
-    return items;
+    return items.filter(function (item) { return C.canAccess(item[0]); });
   }
 
   function renderView() {
+    if (!C.canAccess(C.view)) C.view = C.me().role === "requester" ? "requestForm" : "dashboard";
     if (C.view === "tasks") return V.tasks();
     if (C.view === "taskDetail") return V.taskDetail();
     if (C.view === "requests") return V.requests();
@@ -32,24 +33,40 @@
   }
 
   function render() {
-    if (!C.config.url || !C.config.anonKey) {
-      app.innerHTML = V.setup();
-      bind();
-      return;
-    }
-
-    C.hydrateSupabase();
     if (C.view === "requestForm") {
       app.innerHTML = V.requestOnly();
       bind();
       return;
     }
 
+    if (!C.config.url || !C.config.anonKey) {
+      app.innerHTML = V.setup();
+      bind();
+      return;
+    }
+
+    if (!C.isSignedIn()) {
+      app.innerHTML = V.login();
+      bind();
+      return;
+    }
+
+    C.applyAuthUser();
+    if (!C.hasAccessProfile()) {
+      app.innerHTML = V.noAccess();
+      bind();
+      return;
+    }
+
+    C.hydrateSupabase();
+    if (!C.canAccess(C.view)) C.view = C.me().role === "requester" ? "requestForm" : "dashboard";
+
     app.innerHTML = "<div class=\"mobile-top\"><strong>Camp Ops</strong><select id=\"mobile-view\">" +
       nav().map(function (item) { return "<option value=\"" + item[0] + "\" " + (C.view === item[0] ? "selected" : "") + ">" + item[1] + "</option>"; }).join("") +
       "</select></div><div class=\"app-shell\"><aside class=\"sidebar\"><div class=\"brand\"><div class=\"brand-mark\">CO</div><div><h1>Camp Ops</h1><p class=\"muted\">CGI Chai</p></div></div><nav class=\"nav\">" +
       nav().map(function (item) { return "<button class=\"" + (C.view === item[0] ? "active" : "") + "\" data-view=\"" + item[0] + "\">" + item[1] + "</button>"; }).join("") +
-      "</nav><div class=\"user-card\"><strong>" + C.esc(C.me().name) + "</strong><p>" + C.esc(C.me().role) + " - " + C.esc(C.me().team) + "</p><button class=\"btn secondary\" data-view=\"users\">Switch user</button></div></aside><main class=\"main\">" +
+      "</nav><div class=\"user-card\"><strong>" + C.esc(C.me().name) + "</strong><p>" + C.esc(C.roleLabel(C.me().role)) + " - " + C.esc(C.me().team) + "</p>" +
+      (C.canManageUsers() ? "<button class=\"btn secondary\" data-view=\"users\">Users</button>" : "") + "<button class=\"btn secondary\" id=\"logout\">Sign out</button></div></aside><main class=\"main\">" +
       renderView() + "</main></div>";
     bind();
   }
@@ -107,6 +124,20 @@
     if (newTask) newTask.addEventListener("click", createTask);
     var newEmployee = document.getElementById("new-employee");
     if (newEmployee) newEmployee.addEventListener("click", createEmployee);
+    var newUser = document.getElementById("new-user");
+    if (newUser) newUser.addEventListener("click", createUser);
+    var loginSubmit = document.getElementById("login-submit");
+    if (loginSubmit) loginSubmit.addEventListener("click", login);
+    var loginPassword = document.getElementById("login-password");
+    if (loginPassword) loginPassword.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") login();
+    });
+    var logout = document.getElementById("logout");
+    if (logout) logout.addEventListener("click", function () {
+      C.signOut();
+      C.view = "dashboard";
+      render();
+    });
     var openRequestForm = document.getElementById("open-request-form");
     if (openRequestForm) openRequestForm.addEventListener("click", function () {
       document.querySelector(".main").innerHTML = "<div class=\"topbar\"><h2>New request</h2></div><section class=\"panel\">" + V.requestForm() + "</section>";
@@ -118,9 +149,10 @@
       button.addEventListener("click", function () { approveRequest(button.dataset.requestApprove); });
     });
     document.querySelectorAll("[data-request-reject]").forEach(function (button) {
-      button.addEventListener("click", function () {
+      button.addEventListener("click", async function () {
         var request = C.state.requests.find(function (item) { return item.id === button.dataset.requestReject; });
         request.status = "rejected";
+        if (request.source === "staff_requests") await C.updateStaffRequestStatus(request.id, "rejected");
         C.save();
         render();
       });
@@ -149,6 +181,21 @@
         C.currentUserId = button.dataset.user;
         localStorage.setItem("campOpsCurrentUser", C.currentUserId);
         C.view = "dashboard";
+        render();
+      });
+    });
+    document.querySelectorAll("[data-user-role]").forEach(function (select) {
+      select.addEventListener("change", function () {
+        var user = C.state.users.find(function (item) { return item.id === select.dataset.userRole; });
+        if (!user) return;
+        if (user.id === C.me().id && select.value !== "owner" && C.isOwner()) {
+          if (!confirm("Change your own owner access?")) {
+            select.value = user.role;
+            return;
+          }
+        }
+        user.role = select.value;
+        C.save();
         render();
       });
     });
@@ -223,7 +270,35 @@
     render();
   }
 
-  function createRequest() {
+  function createUser() {
+    var name = prompt("User display name?");
+    if (!name) return;
+    var email = prompt("Login email? This must match their Supabase Auth email.");
+    if (!email) return;
+    var role = prompt("Access level: owner, director, supervisor, worker, or requester", "worker") || "worker";
+    role = role.toLowerCase().trim();
+    if (!C.accessLevels.some(function (level) { return level.id === role; })) role = "worker";
+    var team = prompt("Team?", role === "director" ? "Director" : "") || "";
+    C.state.users.push({ id: C.uid("u"), name: name, email: email.trim(), role: role, team: team });
+    C.save();
+    render();
+  }
+
+  async function login() {
+    var email = document.getElementById("login-email").value.trim();
+    var password = document.getElementById("login-password").value;
+    if (!email || !password) return alert("Please enter email and password.");
+    try {
+      await C.signIn(email, password);
+      C.view = C.me().role === "requester" ? "requestForm" : "dashboard";
+      await C.hydrateSupabase();
+      render();
+    } catch (error) {
+      alert(error.message || "Sign in failed.");
+    }
+  }
+
+  async function createRequest() {
     var request = {
       id: C.uid("r"),
       title: document.getElementById("request-title").value.trim(),
@@ -237,6 +312,20 @@
       chat: []
     };
     if (!request.title) return alert("Please add a title.");
+    if (C.view === "requestForm" && !C.isSignedIn()) {
+      try {
+        var submitted = await C.submitPublicRequest(request);
+        if (!submitted) {
+          C.state.requests.unshift(request);
+          C.save();
+        }
+        alert("Request submitted.");
+        render();
+      } catch (error) {
+        alert(error.message || "Could not submit request.");
+      }
+      return;
+    }
     C.state.requests.unshift(request);
     C.save();
     alert("Request submitted.");
@@ -247,9 +336,10 @@
     }
   }
 
-  function approveRequest(requestId) {
+  async function approveRequest(requestId) {
     var request = C.state.requests.find(function (item) { return item.id === requestId; });
     request.status = "approved";
+    if (request.source === "staff_requests") await C.updateStaffRequestStatus(request.id, "approved");
     C.state.tasks.unshift({
       id: C.uid("t"),
       title: request.title,
