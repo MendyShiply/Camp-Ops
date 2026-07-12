@@ -11,13 +11,13 @@
       ["done", "Done"]
     ];
     var tasks = C.visibleTasks();
-    return "<div class=\"topbar page-hero\"><div><h2>Task Board</h2><p class=\"muted\">Favro-style board: time blocks stacked vertically, status columns running side to side. Blocked means the task is waiting on supplies, approval, access, information, or help before it can be finished.</p></div>" +
+    return "<div class=\"topbar page-hero\"><div><h2>Task Board</h2></div>" +
       (C.isAdmin() ? "<button class=\"btn\" id=\"new-task\">New task</button>" : "") +
       "</div><section class=\"favro-board\">" + blocks.map(function (block) {
         return "<div class=\"board-lane\"><div class=\"lane-title\"><strong>" + block + "</strong><span>" + tasks.filter(function (task) { return (task.scheduleBlock || "Unscheduled") === block; }).length + " tasks</span></div><div class=\"board-columns\">" +
           statuses.map(function (status) {
             var columnTasks = tasks.filter(function (task) { return (task.scheduleBlock || "Unscheduled") === block && task.status === status[0]; });
-            return "<div class=\"board-column\"><div class=\"column-head\"><span>" + status[1] + "</span><b>" + columnTasks.length + "</b></div><div class=\"board-cards\" data-drop-block=\"" + C.esc(block) + "\" data-drop-status=\"" + status[0] + "\">" +
+            return "<div class=\"board-column\"><div class=\"column-head\"><span>" + status[1] + (status[0] === "blocked" ? "<small>Waiting on supplies, approval, access, information, or help.</small>" : "") + "</span><b>" + columnTasks.length + "</b></div><div class=\"board-cards\" data-drop-block=\"" + C.esc(block) + "\" data-drop-status=\"" + status[0] + "\">" +
               (columnTasks.length ? columnTasks.map(boardCard).join("") : "<div class=\"empty mini\">No cards</div>") +
             "</div></div>";
           }).join("") + "</div></div>";
@@ -39,14 +39,15 @@
       "<div class=\"task-detail full-task-detail\">" +
         "<div class=\"panel task-primary\"><div class=\"task-title\"><h3>Task details</h3><span class=\"pill " + statusClass + "\">" + C.esc(task.status.replace("_", " ")) + "</span></div>" +
           "<div class=\"detail-grid\"><div><span>Team</span><strong>" + C.esc(task.assignedTeam || "No team") + "</strong></div><div><span>Priority</span><strong>" + C.esc(task.priority) + "</strong></div><div><span>Time</span><strong>" + C.esc(task.scheduleBlock || "Unscheduled") + "</strong></div><div><span>Due</span><strong>" + C.esc(task.dueTime || "none") + "</strong></div>" +
-          "<div><span>Category</span><strong>" + C.esc(task.category || task.type || "Task") + "</strong></div><div><span>Estimated cost</span><strong>$" + Number(task.costEstimate || 0).toFixed(2) + "</strong></div><div><span>Actual cost</span><input data-task-cost=\"" + C.esc(task.id) + "\" type=\"number\" min=\"0\" step=\"0.01\" value=\"" + Number(task.costActual || 0) + "\"></div></div>" +
+          "<div><span>Category</span><strong>" + C.esc(task.category || task.type || "Task") + "</strong></div></div>" +
+          "<details class=\"cost-panel\"><summary>Cost and purchasing</summary><div class=\"detail-grid\"><div><span>Estimated cost</span><strong>$" + Number(task.costEstimate || 0).toFixed(2) + "</strong></div><div><span>Actual cost</span><input data-task-cost=\"" + C.esc(task.id) + "\" type=\"number\" min=\"0\" step=\"0.01\" value=\"" + Number(task.costActual || 0) + "\"></div></div></details>" +
           "<h4>Subtasks / Standard</h4><ul class=\"subtasks check-standard\">" + (task.subtasks || []).map(function (subtask) { return "<li>" + C.esc(subtask) + "</li>"; }).join("") + "</ul>" +
           "<div class=\"actions\"><button class=\"btn secondary\" data-task-action=\"progress\" data-task-id=\"" + task.id + "\">Start</button>" +
           "<button class=\"btn\" data-task-action=\"done\" data-task-id=\"" + task.id + "\">Done</button>" +
           "<button class=\"btn secondary\" data-task-action=\"problem\" data-task-id=\"" + task.id + "\">Problem</button></div></div>" +
         "<div class=\"panel task-side\"><h3>Task chat</h3><div class=\"chat-thread\">" + (task.chat || []).map(V.messageHtml).join("") +
           "</div><div class=\"form-grid chat-composer\"><div class=\"field full\"><textarea id=\"chat-text\" placeholder=\"Message, question, or note...\"></textarea></div>" +
-          "<div class=\"field chat-upload\"><input id=\"chat-file\" type=\"file\" accept=\"image/*\"></div>" +
+          "<div class=\"field chat-upload\"><input id=\"chat-file\" type=\"file\" accept=\"image/*,.pdf,.doc,.docx\"></div>" +
           "<button class=\"btn\" data-task-action=\"chat\" data-task-id=\"" + task.id + "\">Send</button></div></div>" +
       "</div></section>";
   };

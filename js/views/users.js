@@ -1,17 +1,35 @@
 (function () {
   var C = window.CampOps;
   window.CampOpsViews.users = function () {
-    return "<div class=\"topbar\"><div><h2>Users</h2><p class=\"muted\">Choose who someone is and what parts of Camp Ops they can access. Login accounts are created in Supabase Authentication, then matched here by email.</p></div><button class=\"btn\" id=\"new-user\">Add user</button></div>" +
+    return "<div class=\"topbar\"><div><h2>Users</h2><p class=\"muted\">Choose who someone is and what parts of Camp Ops they can access. Login accounts are matched by email.</p></div><button class=\"btn\" id=\"new-user\">Add user</button></div>" +
+      "<section class=\"panel auth-note\"><h3>Supabase login accounts</h3><p class=\"muted\">Camp Ops can create the user profile here. To also create the Supabase Auth login from this same form, we need a secure invite function using a Supabase service-role key. That key cannot safely live in the browser app.</p></section>" +
       "<section class=\"access-grid\">" + C.accessLevels.map(function (level) {
         return "<div class=\"access-card\"><strong>" + C.esc(level.label) + "</strong><span>" + C.esc(level.detail) + "</span></div>";
       }).join("") + "</section><section class=\"panel\"><div class=\"grid cols-3\">" +
       C.state.users.map(function (user) {
-        return "<div class=\"user-switch\"><button class=\"user-pick\" data-user=\"" + user.id + "\"><strong>" + C.esc(user.name) + "</strong><span>" + C.esc(C.roleLabel(user.role)) + " - " + C.esc(user.team) + "</span><small>" + C.esc(user.email || "No email yet") + "</small></button>" +
+        return "<div class=\"user-switch\"><button class=\"user-pick\" data-user=\"" + user.id + "\"><strong>" + C.esc(user.name) + "</strong><span>" + C.esc(C.roleLabel(user.role)) + " - " + C.esc(user.team) + "</span><small>" + C.esc(user.email || "No email yet") + "</small><small>" + C.esc(user.phone || "No phone yet") + "</small></button>" +
           "<label>Access level<select data-user-role=\"" + user.id + "\">" + C.accessLevels.map(function (level) {
             var disabled = !C.isOwner() && level.id === "owner" ? " disabled" : "";
             return "<option value=\"" + level.id + "\" " + (user.role === level.id ? "selected" : "") + disabled + ">" + C.esc(level.label) + "</option>";
-          }).join("") + "</select></label></div>";
-      }).join("") + "</div></section>";
+          }).join("") + "</select></label>" +
+          (user.email ? "<button class=\"btn secondary\" data-reset-user-password=\"" + C.esc(user.email) + "\">Send password reset</button>" : "") + "</div>";
+      }).join("") + "</div></section>" + (C.userModalOpen ? window.CampOpsViews.userModal() : "");
+  };
+
+  window.CampOpsViews.userModal = function () {
+    return "<div class=\"modal-backdrop\"><section class=\"panel modal-card\"><div class=\"topbar\"><div><h2>Add user</h2><p class=\"muted\">Create the Camp Ops profile in one place.</p></div><button class=\"btn secondary\" id=\"cancel-user-modal\">Cancel</button></div>" +
+      "<div class=\"form-grid\"><div class=\"field\"><label>First name</label><input id=\"user-first-name\" autocomplete=\"given-name\"></div>" +
+      "<div class=\"field\"><label>Last name</label><input id=\"user-last-name\" autocomplete=\"family-name\"></div>" +
+      "<div class=\"field full\"><label>Email address</label><input id=\"user-email\" type=\"email\" autocomplete=\"email\" placeholder=\"name@example.com\"></div>" +
+      "<div class=\"field\"><label>Access level</label><select id=\"user-access-level\">" + C.accessLevels.map(function (level) {
+        var disabled = !C.isOwner() && level.id === "owner" ? " disabled" : "";
+        return "<option value=\"" + level.id + "\"" + disabled + ">" + C.esc(level.label) + "</option>";
+      }).join("") + "</select></div>" +
+      "<div class=\"field\"><label>Phone number</label><input id=\"user-phone\" type=\"tel\" autocomplete=\"tel\"></div>" +
+      "<div class=\"field full\"><label>Team</label><select id=\"user-team\">" + C.state.teams.map(function (team) {
+        return "<option>" + C.esc(team) + "</option>";
+      }).join("") + "</select></div>" +
+      "<div class=\"actions full\"><button class=\"btn\" id=\"save-user-modal\">Save user</button><button class=\"btn secondary\" id=\"cancel-user-modal-2\">Cancel</button></div></div></section></div>";
   };
 
   window.CampOpsViews.settings = function () {
@@ -35,7 +53,7 @@
     return "<div class=\"login-wrap\"><section class=\"login-card\"><div class=\"brand\"><div class=\"brand-mark\">CO</div><div><h1>Camp Ops Login</h1><p class=\"muted\">Sign in with the email and password created for you in Supabase.</p></div></div>" +
       "<div class=\"form-grid\" style=\"margin-top:16px\"><div class=\"field full\"><label>Email</label><input id=\"login-email\" type=\"email\" autocomplete=\"username\" placeholder=\"you@example.com\"></div>" +
       "<div class=\"field full\"><label>Password</label><input id=\"login-password\" type=\"password\" autocomplete=\"current-password\" placeholder=\"Password\"></div>" +
-      "<button class=\"btn\" id=\"login-submit\">Sign in</button></div><p class=\"muted\">The first successful login becomes Owner if no user emails exist yet.</p></section></div>";
+      "<button class=\"btn\" id=\"login-submit\">Sign in</button><button class=\"btn secondary\" id=\"forgot-password\">Reset password</button></div><p class=\"muted\">The first successful login becomes Owner if no user emails exist yet.</p></section></div>";
   };
 
   window.CampOpsViews.noAccess = function () {

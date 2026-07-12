@@ -22,13 +22,29 @@
 
   V.requestRows = function (requests) {
     if (!requests.length) return "<div class=\"empty\">No requests yet.</div>";
-    return "<div class=\"table-wrap\"><table><thead><tr><th>Request</th><th>Location</th><th>Category</th><th>Est. cost</th><th>Status</th><th>Actions</th></tr></thead><tbody>" +
+    return "<div class=\"request-card-list\">" +
       requests.map(function (request) {
-        return "<tr><td><strong>" + C.esc(request.title) + "</strong><br><span class=\"muted\">" + C.esc(request.details || "") + "</span></td>" +
-          "<td>" + C.esc(C.locationName(request.locationId)) + "</td><td>" + C.esc(request.category || "Other") + "</td><td>$" + Number(request.costEstimate || 0).toFixed(2) + "</td><td><span class=\"pill warn\">" + C.esc(request.status) + "</span></td><td>" +
-          (C.isAdmin() && request.status === "pending" ? "<button class=\"btn\" data-request-approve=\"" + request.id + "\">Approve</button> <button class=\"btn danger\" data-request-reject=\"" + request.id + "\">Reject</button>" : "") +
-        "</td></tr>";
-      }).join("") + "</tbody></table></div>";
+        var statusClass = request.status === "complete" ? "ok" : request.status === "rejected" ? "danger" : request.status === "approved" ? "ok" : "warn";
+        return "<button class=\"request-card\" data-open-request=\"" + request.id + "\"><span><strong>" + C.esc(request.title) + "</strong><small>" + C.esc(request.details || "No details yet") + "</small></span><span>" + C.esc(C.locationName(request.locationId)) + "</span><span>" + C.esc(request.category || "Other") + "</span><span class=\"pill " + statusClass + "\">" + C.esc(request.status) + "</span></button>";
+      }).join("") + "</div>";
+  };
+
+  V.requestDetail = function () {
+    var request = C.requestById(C.selectedRequestId);
+    if (!request) return "<div class=\"topbar\"><button class=\"btn secondary\" data-view=\"requests\">Back</button></div><div class=\"empty\">Request not found.</div>";
+    var statusClass = request.status === "complete" ? "ok" : request.status === "rejected" ? "danger" : request.status === "approved" ? "ok" : "warn";
+    return "<section class=\"work-item\"><div class=\"topbar work-item-top\"><div><h2>" + C.esc(request.title) + "</h2><p class=\"muted\">" + C.esc(C.locationName(request.locationId)) + " - " + C.esc(request.category || "Other") + " - " + C.esc(request.urgency || "normal") + "</p></div><button class=\"btn secondary\" data-view=\"requests\">Back to requests</button></div>" +
+      "<div class=\"task-detail full-task-detail\"><div class=\"panel task-primary\"><div class=\"task-title\"><h3>Request details</h3><span class=\"pill " + statusClass + "\">" + C.esc(request.status) + "</span></div>" +
+        "<div class=\"detail-grid\"><div><span>Requester</span><strong>" + C.esc(request.requester || "Unknown") + "</strong></div><div><span>Category</span><strong>" + C.esc(request.category || "Other") + "</strong></div><div><span>Urgency</span><strong>" + C.esc(request.urgency || "normal") + "</strong></div><div><span>Created</span><strong>" + new Date(request.createdAt).toLocaleDateString() + "</strong></div></div>" +
+        "<h4>Request</h4><p>" + C.esc(request.details || "No details yet.") + "</p>" +
+        "<details class=\"cost-panel\"><summary>Cost and purchasing</summary><div class=\"detail-grid\"><div><span>Estimated cost</span><strong>$" + Number(request.costEstimate || 0).toFixed(2) + "</strong></div><div><span>Actual cost</span><strong>$" + Number(request.costActual || 0).toFixed(2) + "</strong></div></div></details>" +
+        "<div class=\"actions\">" +
+          (C.isAdmin() && request.status === "pending" ? "<button class=\"btn\" data-request-action=\"approve\" data-request-id=\"" + request.id + "\">Approve</button><button class=\"btn danger\" data-request-action=\"reject\" data-request-id=\"" + request.id + "\">Reject</button>" : "") +
+          (C.isAdmin() && request.status !== "rejected" && !request.taskId ? "<button class=\"btn\" data-request-action=\"task\" data-request-id=\"" + request.id + "\">Create task</button>" : "") +
+          (request.taskId ? "<button class=\"btn secondary\" data-open-task=\"" + request.taskId + "\">Open task</button>" : "") +
+        "</div></div>" +
+        "<div class=\"panel task-side\"><h3>Request conversation</h3><div class=\"chat-thread\">" + (request.chat || []).map(V.messageHtml).join("") + "</div><div class=\"form-grid chat-composer\"><div class=\"field full\"><textarea id=\"request-chat-text\" placeholder=\"Message, @mention, question, or note...\"></textarea></div><div class=\"field chat-upload\"><input id=\"request-chat-file\" type=\"file\" accept=\"image/*,.pdf,.doc,.docx\"></div><button class=\"btn\" data-request-action=\"chat\" data-request-id=\"" + request.id + "\">Send</button></div></div>" +
+      "</div></section>";
   };
 
   V.requestOnly = function () {

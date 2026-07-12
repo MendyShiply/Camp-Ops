@@ -16,16 +16,16 @@
   }
 
   window.CampOpsSeed = {
-    schemaVersion: 8,
+    schemaVersion: 10,
     users: [
-      { id: "u-mendy", name: "Mendy", email: "", role: "owner", team: "Operations" },
-      { id: "u-malka", name: "Malka Aisenbach", email: "", role: "director", team: "Director" },
-      { id: "u-jenny", name: "Jenny", email: "", role: "worker", team: "Ladies Team" },
-      { id: "u-michelle", name: "Michelle", email: "", role: "worker", team: "Ladies Team" },
-      { id: "u-william", name: "William", email: "", role: "worker", team: "Men's Team" },
-      { id: "u-miguel", name: "Miguel", email: "", role: "worker", team: "Men's Team" },
-      { id: "u-chino", name: "Chino", email: "", role: "worker", team: "Men's Team" },
-      { id: "u-george", name: "George", email: "", role: "worker", team: "Men's Team" }
+      { id: "u-mendy", firstName: "Mendy", lastName: "", name: "Mendy", email: "", phone: "", role: "owner", team: "Operations" },
+      { id: "u-malka", firstName: "Malka", lastName: "Aisenbach", name: "Malka Aisenbach", email: "", phone: "", role: "director", team: "Director" },
+      { id: "u-jenny", firstName: "Jenny", lastName: "", name: "Jenny", email: "", phone: "", role: "worker", team: "Ladies Team" },
+      { id: "u-michelle", firstName: "Michelle", lastName: "", name: "Michelle", email: "", phone: "", role: "worker", team: "Ladies Team" },
+      { id: "u-william", firstName: "William", lastName: "", name: "William", email: "", phone: "", role: "worker", team: "Men's Team" },
+      { id: "u-miguel", firstName: "Miguel", lastName: "", name: "Miguel", email: "", phone: "", role: "worker", team: "Men's Team" },
+      { id: "u-chino", firstName: "Chino", lastName: "", name: "Chino", email: "", phone: "", role: "worker", team: "Men's Team" },
+      { id: "u-george", firstName: "George", lastName: "", name: "George", email: "", phone: "", role: "worker", team: "Men's Team" }
     ],
     teams: ["Ladies Team", "Men's Team", "Operations", "Director"],
     employees: [
@@ -115,10 +115,53 @@
         details: "Pick up shelf from admin office, deliver to family house, and build it.",
         status: "pending",
         createdAt: new Date().toISOString(),
-        chat: []
+        chat: [],
+        costActual: 0,
+        taskId: ""
       }
     ],
     supplyRequests: [],
+    inventory: [
+      {
+        id: "inv-toilet-paper",
+        item: "Toilet paper",
+        category: "Cleaning",
+        quantity: 52,
+        unit: "cases of 12",
+        lowAt: 12,
+        locations: [
+          { locationId: "container-main-rear", quantity: 50, note: "40 ft container behind the main building" },
+          { locationId: "13-basement-cleaning-supplies", quantity: 2, note: "Basement by cleaning supplies" }
+        ],
+        notes: "Used for bunks, bathrooms, and main building restock."
+      },
+      {
+        id: "inv-garbage-bags",
+        item: "Garbage bags",
+        category: "Cleaning",
+        quantity: 18,
+        unit: "boxes",
+        lowAt: 8,
+        locations: [
+          { locationId: "13-basement-cleaning-supplies", quantity: 8, note: "Daily cleaning supply shelf" },
+          { locationId: "container-main-rear", quantity: 10, note: "Bulk storage" }
+        ],
+        notes: ""
+      },
+      {
+        id: "inv-tools",
+        item: "General tools",
+        category: "Tools / Hardware",
+        quantity: 1,
+        unit: "set",
+        lowAt: 1,
+        locations: [
+          { locationId: "2", quantity: 1, note: "Home Depot garage" }
+        ],
+        notes: "Shared tool area for maintenance work."
+      }
+    ],
+    notifications: [],
     timeEntries: [],
     buildings: [
       { id: "13", label: "Building #13", name: "Main Building", type: "Building", notes: "Dining room, TC Shul basement, laundry rooms, kitchen storage, and main operations spaces." },
@@ -189,10 +232,10 @@
   }
 
   [
-    ["1a", "Building #1", "Room A - House / Bunk House", "House", ""],
-    ["1b", "Building #1", "Room B - House / Bunk House", "House", ""],
-    ["3a", "Building #3", "Room A - House / Bunk House", "House", ""],
-    ["3b", "Building #3", "Room B - House / Bunk House", "House", ""],
+    ["1a", "Building #1", "Room A - Mendy House", "House", "Mendy house."],
+    ["1b", "Building #1", "Room B - Mendy House", "House", "Mendy house."],
+    ["3a", "Building #3", "Room A - Aisenbach House", "House", "Aisenbach house."],
+    ["3b", "Building #3", "Room B - Junik House", "House", "Junik house."],
     ["4a", "Building #4", "Room A - House / Bunk House", "House", ""],
     ["4b", "Building #4", "Room B - Teen 8", "House", ""],
     ["4c", "Building #4", "Room C - House / Bunk House", "House", ""],

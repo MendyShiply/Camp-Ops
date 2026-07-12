@@ -470,6 +470,31 @@ button {
   color: var(--ink);
 }
 
+.auth-note {
+  margin-bottom: 14px;
+}
+
+.auth-note h3,
+.auth-note p {
+  margin: 0 0 6px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(23, 62, 57, 0.45);
+}
+
+.modal-card {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+}
+
 .chat {
   grid-column: 2;
   grid-row: 1 / span 5;

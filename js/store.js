@@ -92,9 +92,15 @@
     (seed.rooms || []).forEach(function (room) {
       if (!knownRooms[room.id]) state.rooms.push(clone(room));
     });
-    state.schemaVersion = 8;
+    state.schemaVersion = 10;
     state.users = state.users && state.users.length ? state.users : clone(seed.users);
     state.users.forEach(function (user) {
+      var parts = String(user.name || "").trim().split(/\s+/);
+      user.firstName = user.firstName || parts[0] || "";
+      user.lastName = user.lastName || parts.slice(1).join(" ");
+      user.name = (user.firstName + " " + user.lastName).trim() || user.name || user.email || "User";
+      user.email = user.email || "";
+      user.phone = user.phone || "";
       user.role = user.role || "worker";
       user.team = user.team || "";
     });
@@ -102,6 +108,9 @@
     state.requests.forEach(function (request) {
       request.category = request.category || "Other";
       request.costEstimate = Number(request.costEstimate || 0);
+      request.costActual = Number(request.costActual || 0);
+      request.chat = request.chat || [];
+      request.taskId = request.taskId || "";
     });
     state.tasks = state.tasks || [];
     state.tasks.forEach(function (task) {
@@ -110,6 +119,22 @@
       task.costActual = Number(task.costActual || 0);
     });
     state.supplyRequests = state.supplyRequests || [];
+    state.inventory = state.inventory && state.inventory.length ? state.inventory : clone(seed.inventory || []);
+    var seedInventory = {};
+    (seed.inventory || []).forEach(function (item) { seedInventory[item.id] = item; });
+    state.inventory.forEach(function (item) {
+      item.item = item.item || "Inventory item";
+      item.category = item.category || "Supplies";
+      item.quantity = Number(item.quantity || 0);
+      item.unit = item.unit || "each";
+      item.lowAt = Number(item.lowAt || 0);
+      item.locations = item.locations || [];
+      item.notes = item.notes || "";
+    });
+    (seed.inventory || []).forEach(function (item) {
+      if (!state.inventory.some(function (existing) { return existing.id === item.id; })) state.inventory.push(clone(item));
+    });
+    state.notifications = state.notifications || [];
     state.timeEntries = state.timeEntries || [];
     return state;
   }
@@ -137,6 +162,8 @@
     currentUserId: localStorage.getItem("campOpsCurrentUser") || "u-mendy",
     view: params.has("request") ? "requestForm" : "dashboard",
     selectedTaskId: null,
+    selectedRequestId: null,
+    userModalOpen: false,
     remoteLoaded: false,
     esc: esc,
     uid: function (prefix) {
@@ -187,6 +214,21 @@
       localStorage.removeItem(AUTH_KEY);
       localStorage.removeItem("campOpsCurrentUser");
       this.currentUserId = "u-mendy";
+    },
+    sendPasswordReset: async function (email) {
+      email = String(email || "").trim();
+      if (!email) throw new Error("Please enter an email address.");
+      var response = await fetch(this.config.url + "/auth/v1/recover", {
+        method: "POST",
+        headers: {
+          apikey: this.config.anonKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email: email })
+      });
+      var body = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(body.msg || body.error_description || "Could not send password reset.");
+      return true;
     },
     applyAuthUser: function () {
       var authUser = this.authUser();
@@ -245,9 +287,9 @@
       var role = this.me().role;
       if (role === "owner") return true;
       if (role === "director") return view !== "settings";
-      if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "supplies", "clock", "schedule", "employees", "buildings"].indexOf(view) >= 0;
-      if (role === "secretary") return ["dashboard", "requests", "requestForm", "clock", "schedule", "buildings"].indexOf(view) >= 0;
-      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "requestForm", "supplies", "clock", "schedule", "buildings"].indexOf(view) >= 0;
+      if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "requestDetail", "supplies", "inventory", "clock", "schedule", "employees", "buildings"].indexOf(view) >= 0;
+      if (role === "secretary") return ["dashboard", "requests", "requestDetail", "requestForm", "clock", "schedule", "buildings"].indexOf(view) >= 0;
+      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "requestDetail", "requestForm", "supplies", "inventory", "clock", "schedule", "buildings"].indexOf(view) >= 0;
       return view === "requestForm";
     },
     locationName: function (id) {
@@ -270,6 +312,79 @@
     taskById: function (id) {
       return this.state.tasks.find(function (task) { return task.id === id; });
     },
+    requestById: function (id) {
+      return this.state.requests.find(function (request) { return request.id === id; });
+    },
+    userById: function (id) {
+      return this.state.users.find(function (user) { return user.id === id; });
+    },
+    userByName: function (name) {
+      var normalized = String(name || "").toLowerCase();
+      return this.state.users.find(function (user) {
+        return user.name.toLowerCase() === normalized || user.name.toLowerCase().split(/\s+/)[0] === normalized;
+      });
+    },
+    mentionUsers: function (text) {
+      var self = this;
+      var found = {};
+      String(text || "").replace(/@([A-Za-z][A-Za-z0-9_-]*(?:\s+[A-Za-z][A-Za-z0-9_-]*)?)/g, function (_, rawName) {
+        var parts = rawName.trim().split(/\s+/);
+        var candidates = [rawName.trim(), parts[0]];
+        candidates.forEach(function (candidate) {
+          var user = self.userByName(candidate);
+          if (user) found[user.id] = user;
+        });
+      });
+      return Object.keys(found).map(function (id) { return found[id]; });
+    },
+    addNotification: function (userId, title, body, link) {
+      if (!userId) return;
+      this.state.notifications.unshift({
+        id: this.uid("n"),
+        userId: userId,
+        title: title,
+        body: body || "",
+        link: link || "",
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+    },
+    addMentionNotifications: function (text, title, body, link) {
+      var self = this;
+      this.mentionUsers(text).forEach(function (user) {
+        if (user.id !== self.me().id) self.addNotification(user.id, title, body, link);
+      });
+    },
+    notifyRequestParticipants: function (request, title, body) {
+      var self = this;
+      var participantIds = {};
+      (request.chat || []).forEach(function (message) {
+        if (message.authorId && message.authorId !== self.me().id) participantIds[message.authorId] = true;
+      });
+      if (request.createdById && request.createdById !== self.me().id) participantIds[request.createdById] = true;
+      Object.keys(participantIds).forEach(function (userId) {
+        self.addNotification(userId, title, body, "request:" + request.id);
+      });
+    },
+    notifyTaskParticipants: function (task, title, body) {
+      var self = this;
+      var participantIds = {};
+      if (task.assignedUserId && task.assignedUserId !== self.me().id) participantIds[task.assignedUserId] = true;
+      (task.chat || []).forEach(function (message) {
+        if (message.authorId && message.authorId !== self.me().id) participantIds[message.authorId] = true;
+      });
+      if (task.requestId) {
+        var request = self.requestById(task.requestId);
+        if (request && request.createdById && request.createdById !== self.me().id) participantIds[request.createdById] = true;
+      }
+      Object.keys(participantIds).forEach(function (userId) {
+        self.addNotification(userId, title, body, "task:" + task.id);
+      });
+    },
+    myNotifications: function () {
+      var userId = this.me().id;
+      return (this.state.notifications || []).filter(function (note) { return note.userId === userId; });
+    },
     staffRequestToApp: function (row) {
       return {
         id: row.id,
@@ -282,7 +397,9 @@
         details: row.details || "",
         status: row.status || "pending",
         createdAt: row.created_at || new Date().toISOString(),
-        chat: []
+        chat: [],
+        costActual: 0,
+        taskId: ""
       };
     },
     loadStaffRequests: async function () {

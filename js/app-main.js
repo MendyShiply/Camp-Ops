@@ -9,6 +9,7 @@
       ["tasks", "Tasks"],
       ["requests", "Requests"],
       ["supplies", "Supplies & Tools"],
+      ["inventory", "Inventory"],
       ["clock", "Clock In/Out"],
       ["schedule", "Schedule"],
       ["employees", "Employees"],
@@ -24,7 +25,9 @@
     if (C.view === "tasks") return V.tasks();
     if (C.view === "taskDetail") return V.taskDetail();
     if (C.view === "requests") return V.requests();
+    if (C.view === "requestDetail") return V.requestDetail();
     if (C.view === "supplies") return V.supplies();
+    if (C.view === "inventory") return V.inventory();
     if (C.view === "clock") return V.clock();
     if (C.view === "schedule") return V.schedule();
     if (C.view === "employees") return V.employees();
@@ -62,7 +65,7 @@
       "</select></div><div class=\"app-shell\"><aside class=\"sidebar\"><div class=\"brand\"><div class=\"brand-mark\">CO</div><div><h1>Camp Ops</h1><p class=\"muted\">CGI Chai</p></div></div><nav class=\"nav\">" +
       nav().map(function (item) { return "<button class=\"" + (C.view === item[0] ? "active" : "") + "\" data-view=\"" + item[0] + "\">" + item[1] + "</button>"; }).join("") +
       "</nav><div class=\"user-card\"><strong>" + C.esc(C.me().name) + "</strong><p>" + C.esc(C.roleLabel(C.me().role)) + " - " + C.esc(C.me().team) + "</p>" +
-      (C.canManageUsers() ? "<button class=\"btn secondary\" data-view=\"users\">Users</button>" : "") + "<button class=\"btn secondary\" id=\"logout\">Sign out</button></div></aside><main class=\"main\">" +
+      (C.canManageUsers() ? "<button class=\"btn secondary\" data-view=\"users\">Switch user</button>" : "") + "</div></aside><main class=\"main\">" +
       renderView() + "</main></div>";
     bind();
   }
@@ -83,6 +86,13 @@
       button.addEventListener("click", function () {
         C.selectedTaskId = button.dataset.openTask;
         C.view = "taskDetail";
+        render();
+      });
+    });
+    document.querySelectorAll("[data-open-request]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        C.selectedRequestId = button.dataset.openRequest;
+        C.view = "requestDetail";
         render();
       });
     });
@@ -116,6 +126,9 @@
     document.querySelectorAll("[data-task-action]").forEach(function (button) {
       button.addEventListener("click", function () { handleTaskAction(button); });
     });
+    document.querySelectorAll("[data-request-action]").forEach(function (button) {
+      button.addEventListener("click", function () { handleRequestAction(button); });
+    });
     document.querySelectorAll("[data-task-cost]").forEach(function (input) {
       input.addEventListener("change", function () {
         var task = C.taskById(input.dataset.taskCost);
@@ -138,9 +151,28 @@
       input.addEventListener("change", function () { updateRoomField(input); });
     });
     var newUser = document.getElementById("new-user");
-    if (newUser) newUser.addEventListener("click", createUser);
+    if (newUser) newUser.addEventListener("click", function () {
+      C.userModalOpen = true;
+      render();
+    });
+    var saveUserModal = document.getElementById("save-user-modal");
+    if (saveUserModal) saveUserModal.addEventListener("click", createUser);
+    document.querySelectorAll("#cancel-user-modal, #cancel-user-modal-2").forEach(function (button) {
+      button.addEventListener("click", function () {
+        C.userModalOpen = false;
+        render();
+      });
+    });
+    document.querySelectorAll("[data-reset-user-password]").forEach(function (button) {
+      button.addEventListener("click", function () { sendPasswordReset(button.dataset.resetUserPassword); });
+    });
     var loginSubmit = document.getElementById("login-submit");
     if (loginSubmit) loginSubmit.addEventListener("click", login);
+    var forgotPassword = document.getElementById("forgot-password");
+    if (forgotPassword) forgotPassword.addEventListener("click", function () {
+      var email = document.getElementById("login-email").value.trim();
+      sendPasswordReset(email);
+    });
     var loginPassword = document.getElementById("login-password");
     if (loginPassword) loginPassword.addEventListener("keydown", function (event) {
       if (event.key === "Enter") login();
@@ -179,6 +211,12 @@
         C.save();
         render();
       });
+    });
+    document.querySelectorAll("[data-reorder-inventory]").forEach(function (button) {
+      button.addEventListener("click", function () { createInventorySupplyRequest(button.dataset.reorderInventory); });
+    });
+    document.querySelectorAll("[data-inventory-field]").forEach(function (input) {
+      input.addEventListener("change", function () { updateInventoryField(input); });
     });
     var clockToggle = document.getElementById("clock-toggle");
     if (clockToggle) clockToggle.addEventListener("click", toggleClock);
@@ -255,6 +293,11 @@
       task.status = "done";
       task.completedBy = C.me().id;
       task.completedAt = new Date().toISOString();
+      C.notifyTaskParticipants(task, "Task completed", task.title);
+      if (task.requestId) {
+        var request = C.requestById(task.requestId);
+        if (request) request.status = "complete";
+      }
     }
     if (action === "chat") {
       var file = document.getElementById("chat-file").files[0];
@@ -262,6 +305,8 @@
       var imageData = file ? await C.fileToDataUrl(file) : "";
       if (!text && !imageData) return;
       task.chat.push({ id: C.uid("m"), authorId: C.me().id, authorName: C.me().name, text: text, imageData: imageData, createdAt: new Date().toISOString() });
+      C.addMentionNotifications(text, "Task mention", task.title, "task:" + task.id);
+      C.notifyTaskParticipants(task, "New task message", task.title);
     }
     C.save();
     render();
@@ -312,18 +357,31 @@
   }
 
   function createUser() {
-    var name = prompt("User display name?");
-    if (!name) return;
-    var email = prompt("Login email? This must match their Supabase Auth email.");
-    if (!email) return;
-      var role = prompt("Access level: owner, director, supervisor, secretary, employee, or requester", "employee") || "employee";
-      role = role.toLowerCase().trim();
-      if (role === "employee") role = "worker";
+    var firstName = document.getElementById("user-first-name").value.trim();
+    var lastName = document.getElementById("user-last-name").value.trim();
+    var email = document.getElementById("user-email").value.trim();
+    var role = document.getElementById("user-access-level").value;
+    var phone = document.getElementById("user-phone").value.trim();
+    var team = document.getElementById("user-team").value;
+    var name = (firstName + " " + lastName).trim();
+    if (!firstName || !email) return alert("Please add at least first name and email.");
     if (!C.accessLevels.some(function (level) { return level.id === role; })) role = "worker";
-    var team = prompt("Team?", role === "director" ? "Director" : "") || "";
-    C.state.users.push({ id: C.uid("u"), name: name, email: email.trim(), role: role, team: team });
+    if (C.state.users.some(function (user) { return (user.email || "").toLowerCase() === email.toLowerCase(); })) {
+      return alert("A user with this email already exists.");
+    }
+    C.state.users.push({ id: C.uid("u"), firstName: firstName, lastName: lastName, name: name, email: email, phone: phone, role: role, team: team });
+    C.userModalOpen = false;
     C.save();
     render();
+  }
+
+  async function sendPasswordReset(email) {
+    try {
+      await C.sendPasswordReset(email);
+      alert("Password reset email sent.");
+    } catch (error) {
+      alert(error.message || "Could not send password reset.");
+    }
   }
 
   async function login() {
@@ -352,6 +410,7 @@
       details: document.getElementById("request-details").value.trim(),
       status: "pending",
       createdAt: new Date().toISOString(),
+      createdById: C.isSignedIn() ? C.me().id : "",
       chat: []
     };
     if (!request.title) return alert("Please add a title.");
@@ -383,7 +442,41 @@
     var request = C.state.requests.find(function (item) { return item.id === requestId; });
     request.status = "approved";
     if (request.source === "staff_requests") await C.updateStaffRequestStatus(request.id, "approved");
-    C.state.tasks.unshift({
+    C.save();
+    render();
+  }
+
+  async function handleRequestAction(button) {
+    var request = C.requestById(button.dataset.requestId);
+    if (!request) return;
+    var action = button.dataset.requestAction;
+    if (action === "approve") {
+      request.status = "approved";
+      if (request.source === "staff_requests") await C.updateStaffRequestStatus(request.id, "approved");
+    }
+    if (action === "reject") {
+      request.status = "rejected";
+      if (request.source === "staff_requests") await C.updateStaffRequestStatus(request.id, "rejected");
+    }
+    if (action === "task") createTaskFromRequest(request);
+    if (action === "chat") {
+      var file = document.getElementById("request-chat-file").files[0];
+      var text = document.getElementById("request-chat-text").value.trim();
+      var fileData = file ? await C.fileToDataUrl(file) : "";
+      if (!text && !fileData) return;
+      request.chat = request.chat || [];
+      request.chat.push({ id: C.uid("m"), authorId: C.me().id, authorName: C.me().name, text: text, imageData: fileData, createdAt: new Date().toISOString() });
+      C.addMentionNotifications(text, "Request mention", request.title, "request:" + request.id);
+      C.notifyRequestParticipants(request, "New request message", request.title);
+    }
+    C.save();
+    render();
+  }
+
+  function createTaskFromRequest(request) {
+    if (request.taskId && C.taskById(request.taskId)) return;
+    request.status = "approved";
+    var task = {
       id: C.uid("t"),
       title: request.title,
       locationId: request.locationId,
@@ -395,12 +488,13 @@
       requestId: request.id,
       category: request.category,
       costEstimate: Number(request.costEstimate || 0),
-      costActual: 0,
+      costActual: Number(request.costActual || 0),
       subtasks: [request.details].filter(Boolean),
-      chat: [{ id: C.uid("m"), authorName: request.requester, text: request.details, createdAt: request.createdAt }]
-    });
-    C.save();
-    render();
+      chat: [{ id: C.uid("m"), authorId: request.createdById || "", authorName: request.requester, text: request.details, createdAt: request.createdAt }].concat(request.chat || [])
+    };
+    C.state.tasks.unshift(task);
+    request.taskId = task.id;
+    C.addNotification(request.createdById, "Request became a task", request.title, "task:" + task.id);
   }
 
   function createSupplyRequest() {
@@ -415,6 +509,36 @@
       requestedBy: C.me().id,
       createdAt: new Date().toISOString()
     });
+    C.save();
+    render();
+  }
+
+  function createInventorySupplyRequest(inventoryId) {
+    var item = C.state.inventory.find(function (entry) { return entry.id === inventoryId; });
+    if (!item) return;
+    C.state.supplyRequests.unshift({
+      id: C.uid("s"),
+      category: item.category,
+      item: item.item,
+      locationId: item.locations && item.locations[0] ? item.locations[0].locationId : "",
+      urgency: Number(item.quantity || 0) <= Number(item.lowAt || 0) ? "needed today" : "normal",
+      note: "Inventory reorder. Current: " + item.quantity + " " + item.unit + ". Low level: " + item.lowAt + ".",
+      status: "requested",
+      requestedBy: C.me().id,
+      inventoryId: item.id,
+      createdAt: new Date().toISOString()
+    });
+    C.save();
+    C.view = "supplies";
+    render();
+  }
+
+  function updateInventoryField(input) {
+    var item = C.state.inventory.find(function (entry) { return entry.id === input.dataset.inventoryId; });
+    if (!item) return;
+    var field = input.dataset.inventoryField;
+    if (field === "quantity" || field === "lowAt") item[field] = Math.max(0, Number(input.value || 0));
+    else item[field] = input.value;
     C.save();
     render();
   }

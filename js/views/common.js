@@ -35,10 +35,12 @@
       }).join("");
     },
     messageHtml: function (message) {
+      var isImage = String(message.imageData || "").indexOf("data:image/") === 0;
       return "<div class=\"message\"><strong>" + C.esc(message.authorName) + "</strong> " +
         "<span class=\"muted\">" + new Date(message.createdAt).toLocaleString() + "</span>" +
         "<div>" + C.esc(message.text || "") + "</div>" +
-        (message.imageData ? "<img src=\"" + message.imageData + "\" alt=\"Uploaded task photo\">" : "") +
+        (message.imageData && isImage ? "<img src=\"" + message.imageData + "\" alt=\"Uploaded photo\">" : "") +
+        (message.imageData && !isImage ? "<a class=\"attachment-link\" href=\"" + message.imageData + "\" download>Download attachment</a>" : "") +
       "</div>";
     }
   };
