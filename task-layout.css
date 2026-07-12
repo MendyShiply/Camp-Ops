@@ -1,0 +1,70 @@
+.compact-list {
+  display: grid;
+  gap: 8px;
+}
+
+.task-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 150px 120px 110px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  text-align: left;
+}
+
+.task-row:hover {
+  border-color: var(--accent);
+}
+
+.task-row small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.task-row-head {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.task-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
+  gap: 14px;
+}
+
+.chat-thread {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.schedule-item,
+.user-switch {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  text-align: left;
+}
+
+@media (max-width: 920px) {
+  .task-row,
+  .task-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .task-row-head {
+    display: none;
+  }
+}
