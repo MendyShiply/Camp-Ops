@@ -92,7 +92,7 @@
     (seed.rooms || []).forEach(function (room) {
       if (!knownRooms[room.id]) state.rooms.push(clone(room));
     });
-    state.schemaVersion = 10;
+    state.schemaVersion = 11;
     state.users = state.users && state.users.length ? state.users : clone(seed.users);
     state.users.forEach(function (user) {
       var parts = String(user.name || "").trim().split(/\s+/);
@@ -125,9 +125,17 @@
     state.inventory.forEach(function (item) {
       item.item = item.item || "Inventory item";
       item.category = item.category || "Supplies";
+      item.manufacturer = item.manufacturer || "";
+      item.sku = item.sku || "";
+      item.color = item.color || "";
+      item.size = item.size || "";
+      item.itemUrl = item.itemUrl || "";
+      item.codes = item.codes || "";
       item.quantity = Number(item.quantity || 0);
       item.unit = item.unit || "each";
       item.lowAt = Number(item.lowAt || 0);
+      item.requestQty = Number(item.requestQty || item.lowAt || 1);
+      item.autoRequest = !!item.autoRequest;
       item.locations = item.locations || [];
       item.notes = item.notes || "";
     });
@@ -163,6 +171,11 @@
     view: params.has("request") ? "requestForm" : "dashboard",
     selectedTaskId: null,
     selectedRequestId: null,
+    selectedInventoryId: null,
+    inventorySearch: "",
+    inventorySort: "item",
+    inventorySortDir: "asc",
+    inventoryColumns: ["item", "manufacturer", "sku", "quantity", "lowAt", "location", "color", "size", "actions"],
     userModalOpen: false,
     remoteLoaded: false,
     esc: esc,

@@ -215,6 +215,33 @@
     document.querySelectorAll("[data-reorder-inventory]").forEach(function (button) {
       button.addEventListener("click", function () { createInventorySupplyRequest(button.dataset.reorderInventory); });
     });
+    document.querySelectorAll("[data-toggle-inventory-auto]").forEach(function (button) {
+      button.addEventListener("click", function () { toggleInventoryAuto(button.dataset.toggleInventoryAuto); });
+    });
+    document.querySelectorAll("[data-open-inventory]").forEach(function (row) {
+      row.addEventListener("click", function (event) {
+        if (event.target.closest("button") || event.target.closest("input") || event.target.closest("a")) return;
+        C.selectedInventoryId = row.dataset.openInventory;
+        render();
+      });
+    });
+    document.querySelectorAll("[data-inventory-sort]").forEach(function (button) {
+      button.addEventListener("click", function () { sortInventory(button.dataset.inventorySort); });
+    });
+    document.querySelectorAll("[data-inventory-column-move]").forEach(function (button) {
+      button.addEventListener("click", function () { moveInventoryColumn(button.dataset.inventoryColumnMove, button.dataset.direction); });
+    });
+    var inventorySearch = document.getElementById("inventory-search");
+    if (inventorySearch) inventorySearch.addEventListener("input", function () {
+      C.inventorySearch = inventorySearch.value;
+      render();
+    });
+    document.querySelectorAll("[data-close-inventory-detail]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        C.selectedInventoryId = null;
+        render();
+      });
+    });
     document.querySelectorAll("[data-inventory-field]").forEach(function (input) {
       input.addEventListener("change", function () { updateInventoryField(input); });
     });
@@ -516,13 +543,14 @@
   function createInventorySupplyRequest(inventoryId) {
     var item = C.state.inventory.find(function (entry) { return entry.id === inventoryId; });
     if (!item) return;
+    var requestQty = Number(item.requestQty || item.lowAt || 1);
     C.state.supplyRequests.unshift({
       id: C.uid("s"),
       category: item.category,
       item: item.item,
       locationId: item.locations && item.locations[0] ? item.locations[0].locationId : "",
       urgency: Number(item.quantity || 0) <= Number(item.lowAt || 0) ? "needed today" : "normal",
-      note: "Inventory reorder. Current: " + item.quantity + " " + item.unit + ". Low level: " + item.lowAt + ".",
+      note: "Inventory reorder. Request " + requestQty + " " + item.unit + ". Current: " + item.quantity + " " + item.unit + ". Low level: " + item.lowAt + ". SKU: " + (item.sku || "none") + ".",
       status: "requested",
       requestedBy: C.me().id,
       inventoryId: item.id,
@@ -537,9 +565,60 @@
     var item = C.state.inventory.find(function (entry) { return entry.id === input.dataset.inventoryId; });
     if (!item) return;
     var field = input.dataset.inventoryField;
-    if (field === "quantity" || field === "lowAt") item[field] = Math.max(0, Number(input.value || 0));
+    if (field === "quantity" || field === "lowAt" || field === "requestQty") item[field] = Math.max(0, Number(input.value || 0));
     else item[field] = input.value;
+    maybeAutoRequestInventory(item);
     C.save();
+    render();
+  }
+
+  function toggleInventoryAuto(inventoryId) {
+    var item = C.state.inventory.find(function (entry) { return entry.id === inventoryId; });
+    if (!item) return;
+    item.autoRequest = !item.autoRequest;
+    maybeAutoRequestInventory(item);
+    C.save();
+    render();
+  }
+
+  function maybeAutoRequestInventory(item) {
+    if (!item.autoRequest || Number(item.quantity || 0) > Number(item.lowAt || 0)) return;
+    var open = C.state.supplyRequests.some(function (request) {
+      return request.inventoryId === item.id && ["closed", "delivered"].indexOf(request.status) < 0;
+    });
+    if (!open) {
+      C.state.supplyRequests.unshift({
+        id: C.uid("s"),
+        category: item.category,
+        item: item.item,
+        locationId: item.locations && item.locations[0] ? item.locations[0].locationId : "",
+        urgency: "needed today",
+        note: "Auto request from inventory. Request " + Number(item.requestQty || item.lowAt || 1) + " " + item.unit + ". Current: " + item.quantity + ". Low level: " + item.lowAt + ".",
+        status: "requested",
+        requestedBy: C.me().id,
+        inventoryId: item.id,
+        createdAt: new Date().toISOString()
+      });
+    }
+  }
+
+  function sortInventory(column) {
+    if (C.inventorySort === column) C.inventorySortDir = C.inventorySortDir === "asc" ? "desc" : "asc";
+    else {
+      C.inventorySort = column;
+      C.inventorySortDir = "asc";
+    }
+    render();
+  }
+
+  function moveInventoryColumn(column, direction) {
+    var columns = C.inventoryColumns || [];
+    var index = columns.indexOf(column);
+    var next = direction === "left" ? index - 1 : index + 1;
+    if (index < 0 || next < 0 || next >= columns.length) return;
+    columns.splice(index, 1);
+    columns.splice(next, 0, column);
+    C.inventoryColumns = columns;
     render();
   }
 

@@ -16,7 +16,7 @@
   }
 
   window.CampOpsSeed = {
-    schemaVersion: 10,
+    schemaVersion: 11,
     users: [
       { id: "u-mendy", firstName: "Mendy", lastName: "", name: "Mendy", email: "", phone: "", role: "owner", team: "Operations" },
       { id: "u-malka", firstName: "Malka", lastName: "Aisenbach", name: "Malka Aisenbach", email: "", phone: "", role: "director", team: "Director" },
@@ -126,9 +126,17 @@
         id: "inv-toilet-paper",
         item: "Toilet paper",
         category: "Cleaning",
+        manufacturer: "Bulk paper supplier",
+        sku: "TP-CASE-12",
+        color: "White",
+        size: "Case of 12 rolls",
+        itemUrl: "",
+        codes: "restroom-paper",
         quantity: 52,
         unit: "cases of 12",
         lowAt: 12,
+        requestQty: 24,
+        autoRequest: true,
         locations: [
           { locationId: "container-main-rear", quantity: 50, note: "40 ft container behind the main building" },
           { locationId: "13-basement-cleaning-supplies", quantity: 2, note: "Basement by cleaning supplies" }
@@ -139,9 +147,17 @@
         id: "inv-garbage-bags",
         item: "Garbage bags",
         category: "Cleaning",
+        manufacturer: "Bulk janitorial supplier",
+        sku: "GB-BOX",
+        color: "Black",
+        size: "Contractor / large can liners",
+        itemUrl: "",
+        codes: "trash-route",
         quantity: 18,
         unit: "boxes",
         lowAt: 8,
+        requestQty: 12,
+        autoRequest: false,
         locations: [
           { locationId: "13-basement-cleaning-supplies", quantity: 8, note: "Daily cleaning supply shelf" },
           { locationId: "container-main-rear", quantity: 10, note: "Bulk storage" }
@@ -152,9 +168,17 @@
         id: "inv-tools",
         item: "General tools",
         category: "Tools / Hardware",
+        manufacturer: "Mixed",
+        sku: "TOOLS-GENERAL",
+        color: "",
+        size: "Shared tool set",
+        itemUrl: "",
+        codes: "home-depot-garage",
         quantity: 1,
         unit: "set",
         lowAt: 1,
+        requestQty: 1,
+        autoRequest: false,
         locations: [
           { locationId: "2", quantity: 1, note: "Home Depot garage" }
         ],

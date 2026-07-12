@@ -19,14 +19,69 @@
     var lowItems = (C.state.inventory || []).filter(function (item) {
       return Number(item.quantity || 0) <= Number(item.lowAt || 0);
     }).length;
-    return "<div class=\"topbar\"><div><h2>Inventory</h2><p class=\"muted\">" + lowItems + " low-stock items. Locations show where items are actually stored.</p></div><button class=\"btn\" data-view=\"supplies\">Supply requests</button></div><section class=\"inventory-list\">" +
-      (C.state.inventory || []).map(function (item) {
-        var isLow = Number(item.quantity || 0) <= Number(item.lowAt || 0);
-        return "<article class=\"panel inventory-card\"><div class=\"inventory-head\"><div><h3>" + C.esc(item.item) + "</h3><p class=\"muted\">" + C.esc(item.category) + " - " + C.esc(item.notes || "") + "</p></div><span class=\"pill " + (isLow ? "danger" : "ok") + "\">" + (isLow ? "low stock" : "in stock") + "</span></div>" +
-          "<div class=\"detail-grid inventory-numbers\"><div><span>Current</span><input data-inventory-field=\"quantity\" data-inventory-id=\"" + item.id + "\" type=\"number\" min=\"0\" value=\"" + Number(item.quantity || 0) + "\"><strong>" + C.esc(item.unit) + "</strong></div><div><span>Request when at</span><input data-inventory-field=\"lowAt\" data-inventory-id=\"" + item.id + "\" type=\"number\" min=\"0\" value=\"" + Number(item.lowAt || 0) + "\"><strong>" + C.esc(item.unit) + "</strong></div></div>" +
-          "<h4>Stored in</h4><div class=\"stored-list\">" + (item.locations || []).map(function (spot) {
-            return "<div><strong>" + C.esc(C.locationName(spot.locationId)) + "</strong><span>" + Number(spot.quantity || 0) + " " + C.esc(item.unit) + "</span><small>" + C.esc(spot.note || "") + "</small></div>";
-          }).join("") + "</div><div class=\"actions\"><button class=\"btn secondary\" data-reorder-inventory=\"" + item.id + "\">Create purchase request</button></div></article>";
-      }).join("") + "</section>";
+    return "<div class=\"topbar\"><div><h2>Inventory</h2><p class=\"muted\">" + lowItems + " low-stock items. Search, sort, update quantities, and create purchasing requests from the sheet.</p></div><button class=\"btn\" data-view=\"supplies\">Supply requests</button></div>" +
+      "<section class=\"panel inventory-toolbar\"><div class=\"field\"><label>Search inventory</label><input id=\"inventory-search\" value=\"" + C.esc(C.inventorySearch || "") + "\" placeholder=\"Product, SKU, manufacturer, code, location...\"></div><button class=\"btn secondary\" data-inventory-sort=\"item\">A-Z</button><button class=\"btn secondary\" data-inventory-sort=\"quantity\">Qty</button><button class=\"btn secondary\" data-inventory-sort=\"location\">Location</button></section>" +
+      "<section class=\"panel inventory-sheet\">" + inventoryTable() + "</section>" +
+      inventoryDetail();
   };
+
+  function inventoryTable() {
+    var items = filteredInventory();
+    var columns = C.inventoryColumns || ["item", "manufacturer", "sku", "quantity", "lowAt", "location", "color", "size", "actions"];
+    return "<div class=\"table-wrap\"><table class=\"inventory-table\"><thead><tr>" + columns.map(function (column, index) {
+      return "<th><div class=\"inventory-th\"><button class=\"th-label\" data-inventory-sort=\"" + column + "\">" + C.esc(columnLabel(column)) + "</button><span><button class=\"mini-icon\" data-inventory-column-move=\"" + column + "\" data-direction=\"left\" " + (index === 0 ? "disabled" : "") + ">‹</button><button class=\"mini-icon\" data-inventory-column-move=\"" + column + "\" data-direction=\"right\" " + (index === columns.length - 1 ? "disabled" : "") + ">›</button></span></div></th>";
+    }).join("") + "</tr></thead><tbody>" + (items.length ? items.map(function (item) {
+      return "<tr data-open-inventory=\"" + item.id + "\">" + columns.map(function (column) {
+        return "<td>" + inventoryCell(item, column) + "</td>";
+      }).join("") + "</tr>";
+    }).join("") : "<tr><td colspan=\"" + columns.length + "\"><div class=\"empty\">No inventory items match that search.</div></td></tr>") + "</tbody></table></div>";
+  }
+
+  function filteredInventory() {
+    var query = String(C.inventorySearch || "").toLowerCase();
+    var items = (C.state.inventory || []).filter(function (item) {
+      if (!query) return true;
+      return [item.item, item.category, item.manufacturer, item.sku, item.color, item.size, item.codes, item.notes, locationSummary(item)].join(" ").toLowerCase().indexOf(query) >= 0;
+    });
+    var sort = C.inventorySort || "item";
+    var dir = C.inventorySortDir === "desc" ? -1 : 1;
+    return items.sort(function (a, b) {
+      var av = sort === "quantity" || sort === "lowAt" ? Number(a[sort] || 0) : String(sort === "location" ? locationSummary(a) : a[sort] || "").toLowerCase();
+      var bv = sort === "quantity" || sort === "lowAt" ? Number(b[sort] || 0) : String(sort === "location" ? locationSummary(b) : b[sort] || "").toLowerCase();
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function columnLabel(column) {
+    return { item: "Product", manufacturer: "Manufacturer", sku: "SKU", quantity: "Qty", lowAt: "Low at", location: "Location", color: "Color", size: "Size", actions: "Request" }[column] || column;
+  }
+
+  function locationSummary(item) {
+    return (item.locations || []).map(function (spot) { return C.locationName(spot.locationId); }).join(", ");
+  }
+
+  function inventoryCell(item, column) {
+    var isLow = Number(item.quantity || 0) <= Number(item.lowAt || 0);
+    if (column === "item") return "<strong>" + C.esc(item.item) + "</strong><small>" + C.esc(item.category || "") + "</small>";
+    if (column === "manufacturer") return C.esc(item.manufacturer || "");
+    if (column === "sku") return "<code>" + C.esc(item.sku || "") + "</code>";
+    if (column === "quantity") return "<input class=\"inline-number\" data-inventory-field=\"quantity\" data-inventory-id=\"" + item.id + "\" type=\"number\" min=\"0\" value=\"" + Number(item.quantity || 0) + "\"><small>" + C.esc(item.unit || "each") + "</small>";
+    if (column === "lowAt") return "<input class=\"inline-number\" data-inventory-field=\"lowAt\" data-inventory-id=\"" + item.id + "\" type=\"number\" min=\"0\" value=\"" + Number(item.lowAt || 0) + "\"><span class=\"pill " + (isLow ? "danger" : "ok") + "\">" + (isLow ? "low" : "ok") + "</span>";
+    if (column === "location") return C.esc(locationSummary(item));
+    if (column === "color") return C.esc(item.color || "");
+    if (column === "size") return C.esc(item.size || "");
+    if (column === "actions") return "<div class=\"row-actions\"><button class=\"btn secondary\" data-reorder-inventory=\"" + item.id + "\">Request more</button><button class=\"btn secondary " + (item.autoRequest ? "active-toggle" : "") + "\" data-toggle-inventory-auto=\"" + item.id + "\">Automate</button></div>";
+    return "";
+  }
+
+  function inventoryDetail() {
+    var item = (C.state.inventory || []).find(function (entry) { return entry.id === C.selectedInventoryId; });
+    if (!item) return "";
+    return "<section class=\"panel inventory-detail\"><div class=\"topbar\"><div><h3>" + C.esc(item.item) + "</h3><p class=\"muted\">" + C.esc(item.manufacturer || "No manufacturer") + " - " + C.esc(item.sku || "No SKU") + "</p></div><button class=\"btn secondary\" data-close-inventory-detail=\"true\">Close</button></div>" +
+      "<div class=\"detail-grid\"><div><span>Manufacturer</span><input data-inventory-field=\"manufacturer\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.manufacturer || "") + "\"></div><div><span>SKU</span><input data-inventory-field=\"sku\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.sku || "") + "\"></div><div><span>Color</span><input data-inventory-field=\"color\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.color || "") + "\"></div><div><span>Size</span><input data-inventory-field=\"size\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.size || "") + "\"></div><div><span>Request qty</span><input data-inventory-field=\"requestQty\" data-inventory-id=\"" + item.id + "\" type=\"number\" min=\"0\" value=\"" + Number(item.requestQty || 0) + "\"></div><div><span>Item link</span><input data-inventory-field=\"itemUrl\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.itemUrl || "") + "\"></div><div><span>Codes</span><input data-inventory-field=\"codes\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.codes || "") + "\"></div><div><span>Auto request</span><strong>" + (item.autoRequest ? "On" : "Off") + "</strong></div></div>" +
+      (item.itemUrl ? "<p><a href=\"" + C.esc(item.itemUrl) + "\" target=\"_blank\" rel=\"noopener\">Open product link</a></p>" : "") +
+      "<h4>Stored in</h4><div class=\"stored-list\">" + (item.locations || []).map(function (spot) { return "<div><strong>" + C.esc(C.locationName(spot.locationId)) + "</strong><span>" + Number(spot.quantity || 0) + " " + C.esc(item.unit) + "</span><small>" + C.esc(spot.note || "") + "</small></div>"; }).join("") + "</div><div class=\"actions\"><button class=\"btn\" data-reorder-inventory=\"" + item.id + "\">Request more</button></div></section>";
+  }
 })();
