@@ -356,6 +356,14 @@
       C.inventorySearch = inventorySearch.value;
       render();
     });
+    var buildingSearch = document.getElementById("building-search");
+    if (buildingSearch) buildingSearch.addEventListener("input", function () {
+      C.buildingSearch = buildingSearch.value;
+      render();
+    });
+    document.querySelectorAll("[data-building-sort]").forEach(function (button) {
+      button.addEventListener("click", function () { sortBuildings(button.dataset.buildingSort); });
+    });
     document.querySelectorAll("[data-close-inventory-detail]").forEach(function (button) {
       button.addEventListener("click", function () {
         C.selectedInventoryId = null;
@@ -957,6 +965,15 @@
     }
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
+  }
+
+  function sortBuildings(column) {
+    if (C.buildingSort === column) C.buildingSortDir = C.buildingSortDir === "asc" ? "desc" : "asc";
+    else {
+      C.buildingSort = column;
+      C.buildingSortDir = "asc";
+    }
+    render();
   }
 
   function toggleClock() {

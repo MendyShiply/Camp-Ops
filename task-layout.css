@@ -750,6 +750,63 @@
   gap: 16px;
 }
 
+.building-toolbar {
+  margin-bottom: 14px;
+}
+
+.building-summary {
+  margin-bottom: 14px;
+}
+
+.building-sheet {
+  padding: 0;
+  overflow: hidden;
+}
+
+.building-table {
+  min-width: 1180px;
+}
+
+.building-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-2);
+}
+
+.building-table td {
+  vertical-align: middle;
+}
+
+.building-table small {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.building-table input,
+.building-table textarea {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 7px;
+}
+
+.building-table input[type="number"] {
+  min-width: 72px;
+}
+
+.building-table textarea {
+  min-height: 48px;
+  resize: vertical;
+}
+
+.building-table tr:hover td {
+  background: #f8faf7;
+}
+
 .building-card {
   display: grid;
   gap: 14px;

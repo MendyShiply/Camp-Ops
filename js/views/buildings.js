@@ -1,11 +1,5 @@
 (function () {
   var C = window.CampOps;
-  var V = window.CampOpsViews;
-
-  function roomInput(room, field, type) {
-    var value = room[field] == null ? "" : room[field];
-    return "<input data-room-field=\"" + C.esc(field) + "\" data-room-id=\"" + C.esc(room.id) + "\" type=\"" + type + "\" value=\"" + C.esc(value) + "\">";
-  }
 
   function buildingSortKey(building) {
     var text = (building.label || building.id || "").toLowerCase();
@@ -15,63 +9,131 @@
     return number.toString().padStart(4, "0") + "-" + letter;
   }
 
-  function roomRow(room) {
+  function buildingById(id) {
+    return (C.state.buildings || []).find(function (building) { return building.id === id; }) || { id: id, label: "No building", name: "", type: "", notes: "" };
+  }
+
+  function roomInput(room, field, type) {
+    var value = room[field] == null ? "" : room[field];
+    return "<input data-room-field=\"" + C.esc(field) + "\" data-room-id=\"" + C.esc(room.id) + "\" type=\"" + type + "\" value=\"" + C.esc(value) + "\">";
+  }
+
+  function rowSearchText(row) {
+    return [
+      row.building.label,
+      row.building.name,
+      row.building.type,
+      row.building.notes,
+      row.room.name,
+      row.room.assignment,
+      row.room.notes
+    ].join(" ").toLowerCase();
+  }
+
+  function allRows() {
+    var rooms = (C.state.rooms || []).map(function (room) {
+      return { kind: "room", building: buildingById(room.buildingId), room: room };
+    });
+    var used = {};
+    rooms.forEach(function (row) { used[row.building.id] = true; });
+    (C.state.buildings || []).forEach(function (building) {
+      if (!used[building.id]) {
+        rooms.push({
+          kind: "building",
+          building: building,
+          room: { id: "empty-" + building.id, buildingId: building.id, name: "", assignment: "", beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0, notes: "" }
+        });
+      }
+    });
+    return rooms;
+  }
+
+  function filteredRows() {
+    var query = String(C.buildingSearch || "").toLowerCase();
+    var sort = C.buildingSort || "building";
+    var dir = C.buildingSortDir === "desc" ? -1 : 1;
+    return allRows().filter(function (row) {
+      return !query || rowSearchText(row).indexOf(query) >= 0;
+    }).sort(function (a, b) {
+      var numeric = ["beds", "bunkBeds", "toilets", "sinks", "showers"].indexOf(sort) >= 0;
+      var av = numeric ? Number(a.room[sort] || 0) : sortValue(a, sort);
+      var bv = numeric ? Number(b.room[sort] || 0) : sortValue(b, sort);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return buildingSortKey(a.building).localeCompare(buildingSortKey(b.building));
+    });
+  }
+
+  function sortValue(row, sort) {
+    if (sort === "building") return buildingSortKey(row.building);
+    if (sort === "name") return String(row.room.name || "").toLowerCase();
+    if (sort === "assignment") return String(row.room.assignment || "").toLowerCase();
+    if (sort === "type") return String(row.building.type || "").toLowerCase();
+    return String(row.room.notes || row.building.notes || "").toLowerCase();
+  }
+
+  function totals(rows) {
+    return rows.reduce(function (sum, row) {
+      if (row.kind !== "room") return sum;
+      sum.rooms += 1;
+      sum.beds += Number(row.room.beds || 0);
+      sum.bunkBeds += Number(row.room.bunkBeds || 0);
+      sum.toilets += Number(row.room.toilets || 0);
+      sum.sinks += Number(row.room.sinks || 0);
+      sum.showers += Number(row.room.showers || 0);
+      return sum;
+    }, { rooms: 0, beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0 });
+  }
+
+  function header(column, label) {
+    return "<th><button class=\"th-label\" data-building-sort=\"" + column + "\">" + C.esc(label) + "</button></th>";
+  }
+
+  function rowHtml(row) {
+    var building = row.building;
+    var room = row.room;
+    var isEmpty = row.kind !== "room";
     return "<tr>" +
-      "<td><strong>" + C.esc(room.name) + "</strong>" +
-        "<label class=\"inline-room-field\"><span>Bunk or family</span>" + roomInput(room, "assignment", "text") + "</label></td>" +
-      "<td>" + roomInput(room, "beds", "number") + "</td>" +
-      "<td>" + roomInput(room, "bunkBeds", "number") + "</td>" +
-      "<td>" + roomInput(room, "toilets", "number") + "</td>" +
-      "<td>" + roomInput(room, "sinks", "number") + "</td>" +
-      "<td>" + roomInput(room, "showers", "number") + "</td>" +
-      "<td><textarea data-room-field=\"notes\" data-room-id=\"" + C.esc(room.id) + "\">" + C.esc(room.notes || "") + "</textarea></td>" +
+      "<td><strong>" + C.esc(building.label || building.id) + "</strong><small>" + C.esc(building.name || "") + "</small></td>" +
+      "<td>" + C.esc(building.type || "Building") + "</td>" +
+      "<td>" + (isEmpty ? "<span class=\"muted\">No rooms yet</span>" : "<strong>" + C.esc(room.name) + "</strong>") + "</td>" +
+      "<td>" + (isEmpty ? "" : roomInput(room, "assignment", "text")) + "</td>" +
+      "<td>" + (isEmpty ? "" : roomInput(room, "beds", "number")) + "</td>" +
+      "<td>" + (isEmpty ? "" : roomInput(room, "bunkBeds", "number")) + "</td>" +
+      "<td>" + (isEmpty ? "" : roomInput(room, "toilets", "number")) + "</td>" +
+      "<td>" + (isEmpty ? "" : roomInput(room, "sinks", "number")) + "</td>" +
+      "<td>" + (isEmpty ? "" : roomInput(room, "showers", "number")) + "</td>" +
+      "<td>" + (isEmpty ? C.esc(building.notes || "") : "<textarea data-room-field=\"notes\" data-room-id=\"" + C.esc(room.id) + "\">" + C.esc(room.notes || "") + "</textarea>") + "</td>" +
+      "<td><button class=\"btn secondary\" data-add-room=\"" + C.esc(building.id) + "\">Add room</button></td>" +
     "</tr>";
   }
 
-  function buildingCard(building) {
-    var rooms = (C.state.rooms || []).filter(function (room) { return room.buildingId === building.id; });
-    var locationIds = {};
-    locationIds[building.id] = true;
-    rooms.forEach(function (room) { locationIds[room.id] = true; });
-    var relatedRequests = (C.state.requests || []).filter(function (request) { return locationIds[request.locationId]; });
-    var relatedTasks = (C.state.tasks || []).filter(function (task) { return locationIds[task.locationId]; });
-    var estCost = relatedRequests.reduce(function (sum, request) { return sum + Number(request.costEstimate || 0); }, 0) +
-      relatedTasks.reduce(function (sum, task) { return sum + Number(task.costEstimate || 0); }, 0);
-    var actualCost = relatedTasks.reduce(function (sum, task) { return sum + Number(task.costActual || 0); }, 0);
-    var totals = rooms.reduce(function (sum, room) {
-      sum.beds += Number(room.beds || 0);
-      sum.bunkBeds += Number(room.bunkBeds || 0);
-      sum.toilets += Number(room.toilets || 0);
-      sum.sinks += Number(room.sinks || 0);
-      sum.showers += Number(room.showers || 0);
-      return sum;
-    }, { beds: 0, bunkBeds: 0, toilets: 0, sinks: 0, showers: 0 });
-
-    return "<section class=\"panel building-card\">" +
-      "<div class=\"section-head building-head\"><div><h3>" + C.esc(building.label + " - " + building.name) + "</h3><p class=\"muted\">" + C.esc(building.type || "Building") + (building.notes ? " - " + C.esc(building.notes) : "") + "</p></div>" +
-      "<button class=\"btn secondary\" data-add-room=\"" + C.esc(building.id) + "\">Add room</button></div>" +
-      "<div class=\"room-summary\">" +
-        "<span><strong>" + rooms.length + "</strong> spaces</span>" +
-        "<span><strong>" + totals.beds + "</strong> beds</span>" +
-        "<span><strong>" + totals.bunkBeds + "</strong> bunk beds</span>" +
-        "<span><strong>" + totals.toilets + "</strong> toilets</span>" +
-        "<span><strong>" + totals.sinks + "</strong> sinks</span>" +
-        "<span><strong>" + totals.showers + "</strong> showers</span>" +
-        "<span><strong>" + relatedRequests.length + "</strong> requests</span>" +
-        "<span><strong>$" + estCost.toFixed(0) + "</strong> estimated</span>" +
-        "<span><strong>$" + actualCost.toFixed(0) + "</strong> actual</span>" +
-      "</div>" +
-      "<div class=\"table-wrap room-table\"><table><thead><tr><th>Room / apartment / assignment</th><th>Beds</th><th>Bunk beds</th><th>Toilets</th><th>Sinks</th><th>Showers</th><th>Notes</th></tr></thead><tbody>" +
-        (rooms.length ? rooms.map(roomRow).join("") : "<tr><td colspan=\"7\" class=\"muted\">No rooms added yet.</td></tr>") +
-      "</tbody></table></div>" +
-    "</section>";
-  }
-
-  V.buildings = function () {
-    var buildings = (C.state.buildings || []).slice().sort(function (a, b) {
-      return buildingSortKey(a).localeCompare(buildingSortKey(b));
-    });
-    return "<div class=\"topbar page-hero\"><div><h2>Buildings & Rooms</h2><p class=\"muted\">Track which bunk or family is in each space, plus beds and bathroom fixtures.</p></div><button class=\"btn\" id=\"new-building\">Add building</button></div>" +
-      "<section class=\"building-list\">" + buildings.map(buildingCard).join("") + "</section>";
+  window.CampOpsViews.buildings = function () {
+    var rows = filteredRows();
+    var sum = totals(rows);
+    return "<div class=\"topbar page-hero\"><div><h2>Buildings & Rooms</h2><p class=\"muted\">Spreadsheet view for houses, apartments, rooms, beds, bathrooms, assignments, and notes.</p></div><button class=\"btn\" id=\"new-building\">Add building</button></div>" +
+      "<section class=\"panel inventory-toolbar building-toolbar\"><div class=\"field\"><label>Search buildings</label><input id=\"building-search\" value=\"" + C.esc(C.buildingSearch || "") + "\" placeholder=\"Building, house, room, family, bunk, note...\"></div><button class=\"btn secondary\" data-building-sort=\"building\">A-Z</button><button class=\"btn secondary\" data-building-sort=\"beds\">Beds</button><button class=\"btn secondary\" data-building-sort=\"assignment\">Assignment</button></section>" +
+      "<section class=\"room-summary building-summary\">" +
+        "<span><strong>" + (C.state.buildings || []).length + "</strong> buildings</span>" +
+        "<span><strong>" + sum.rooms + "</strong> rooms / spaces</span>" +
+        "<span><strong>" + sum.beds + "</strong> beds</span>" +
+        "<span><strong>" + sum.bunkBeds + "</strong> bunk beds</span>" +
+        "<span><strong>" + sum.toilets + "</strong> toilets</span>" +
+        "<span><strong>" + sum.sinks + "</strong> sinks</span>" +
+        "<span><strong>" + sum.showers + "</strong> showers</span>" +
+      "</section>" +
+      "<section class=\"panel inventory-sheet building-sheet\"><div class=\"table-wrap\"><table class=\"inventory-table building-table\"><thead><tr>" +
+        header("building", "Building") +
+        header("type", "Type") +
+        header("name", "Room / space") +
+        header("assignment", "Bunk / family") +
+        header("beds", "Beds") +
+        header("bunkBeds", "Bunk beds") +
+        header("toilets", "Toilets") +
+        header("sinks", "Sinks") +
+        header("showers", "Showers") +
+        header("notes", "Notes") +
+        "<th>Action</th>" +
+      "</tr></thead><tbody>" + (rows.length ? rows.map(rowHtml).join("") : "<tr><td colspan=\"11\"><div class=\"empty\">No buildings or rooms match that search.</div></td></tr>") + "</tbody></table></div></section>";
   };
 })();
