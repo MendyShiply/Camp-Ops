@@ -29,11 +29,12 @@
   function supplyCard(request) {
     var requestedBy = C.userById(request.requestedBy);
     var orderedBy = C.userById(request.orderedBy);
+    var tracking = String(request.trackingNumber || "").trim();
     return "<article class=\"board-card supply-card\" draggable=\"true\" data-drag-supply=\"" + request.id + "\">" +
       "<strong>" + C.esc(request.item) + "</strong><span>" + Number(request.quantity || 1) + " " + C.esc(request.unit || "each") + " - " + C.esc(C.locationName(request.locationId)) + "</span>" +
       "<small>" + C.esc(request.note || request.orderNote || "No note yet") + "</small>" +
       "<div class=\"card-meta\"><em class=\"pill warn\">" + C.esc(request.urgency || "normal") + "</em><span>" + C.esc(requestedBy ? requestedBy.name : "Requested") + "</span></div>" +
-      "<div class=\"supply-card-fields\"><label>Vendor<input data-supply-field=\"vendor\" data-supply-id=\"" + request.id + "\" value=\"" + C.esc(request.vendor || "") + "\"></label><label>Tracking<input data-supply-field=\"trackingNumber\" data-supply-id=\"" + request.id + "\" value=\"" + C.esc(request.trackingNumber || "") + "\"></label></div>" +
+      "<div class=\"supply-card-fields\"><label>Vendor<input data-supply-field=\"vendor\" data-supply-id=\"" + request.id + "\" value=\"" + C.esc(request.vendor || "") + "\"></label><label>Tracking<input data-supply-field=\"trackingNumber\" data-supply-id=\"" + request.id + "\" value=\"" + C.esc(request.trackingNumber || "") + "\">" + (tracking ? "<a class=\"tracking-link\" href=\"" + C.esc(trackingUrl(tracking)) + "\" target=\"_blank\" rel=\"noopener\">Open tracking</a>" : "") + "</label></div>" +
       "<div class=\"actions\">" +
         (request.status !== "ordered" ? "<button class=\"btn secondary\" data-supply-status=\"" + request.id + "\" data-status=\"ordered\">Ordered</button>" : "") +
         (request.status !== "shipped" ? "<button class=\"btn secondary\" data-supply-status=\"" + request.id + "\" data-status=\"shipped\">Shipped</button>" : "") +
@@ -41,6 +42,14 @@
       "</div>" +
       (orderedBy ? "<small>Ordered by " + C.esc(orderedBy.name) + "</small>" : "") +
     "</article>";
+  }
+
+  function trackingUrl(value) {
+    var tracking = String(value || "").replace(/\s+/g, "");
+    if (/^1Z[0-9A-Z]{16}$/i.test(tracking)) return "https://www.ups.com/track?tracknum=" + encodeURIComponent(tracking);
+    if (/^\d{12,15}$/.test(tracking)) return "https://www.fedex.com/fedextrack/?trknbr=" + encodeURIComponent(tracking);
+    if (/^(94|93|92|95|96)\d{20,22}$/.test(tracking)) return "https://tools.usps.com/go/TrackConfirmAction?tLabels=" + encodeURIComponent(tracking);
+    return "https://www.google.com/search?q=" + encodeURIComponent(tracking + " tracking");
   }
 
   V.inventory = function () {
