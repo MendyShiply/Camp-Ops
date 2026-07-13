@@ -65,8 +65,8 @@
       "</select></div><div class=\"app-shell\"><aside class=\"sidebar\"><div class=\"brand\"><div class=\"brand-mark\">CO</div><div><h1>Camp Ops</h1><p class=\"muted\">CGI Chai</p></div></div><nav class=\"nav\">" +
       nav().map(function (item) { return "<button class=\"" + (C.view === item[0] ? "active" : "") + "\" data-view=\"" + item[0] + "\">" + item[1] + "</button>"; }).join("") +
       "</nav><div class=\"user-card\"><strong>" + C.esc(C.me().name) + "</strong><p>" + C.esc(C.roleLabel(C.me().role)) + " - " + C.esc(C.me().team) + "</p>" +
-      (C.canManageUsers() ? "<button class=\"btn secondary\" data-view=\"users\">Switch user</button>" : "") + "</div></aside><main class=\"main\">" +
-      renderView() + "</main></div>";
+      (C.canManageUsers() ? "<button class=\"btn secondary\" id=\"open-switch-user\">Switch user</button>" : "") + "</div></aside><main class=\"main\">" +
+      renderView() + "</main></div>" + (C.switchUserModalOpen ? V.switchUserModal() : "");
     bind();
   }
 
@@ -81,6 +81,20 @@
     if (mobileView) mobileView.addEventListener("change", function (event) {
       C.view = event.target.value;
       render();
+    });
+    var openSwitchUser = document.getElementById("open-switch-user");
+    if (openSwitchUser) openSwitchUser.addEventListener("click", function () {
+      C.switchUserModalOpen = true;
+      render();
+    });
+    document.querySelectorAll("#cancel-switch-user, #cancel-switch-user-2").forEach(function (button) {
+      button.addEventListener("click", function () {
+        C.switchUserModalOpen = false;
+        render();
+      });
+    });
+    document.querySelectorAll("[data-switch-role]").forEach(function (button) {
+      button.addEventListener("click", function () { switchToRole(button.dataset.switchRole); });
     });
     document.querySelectorAll("[data-open-task]").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -349,6 +363,7 @@
       button.addEventListener("click", function () {
         C.currentUserId = button.dataset.user;
         localStorage.setItem("campOpsCurrentUser", C.currentUserId);
+        C.switchUserModalOpen = false;
         C.view = "dashboard";
         render();
       });
@@ -546,6 +561,30 @@
     (C.state.employees || []).forEach(function (employee) {
       if (employee.userId === userId) employee.userId = "";
     });
+    C.save();
+    render();
+  }
+
+  function switchToRole(role) {
+    var user = (C.state.users || []).find(function (item) { return item.role === role; });
+    if (!user) {
+      var level = C.accessLevels.find(function (item) { return item.id === role; });
+      user = {
+        id: C.uid("preview"),
+        firstName: "Preview",
+        lastName: level ? level.label : role,
+        name: "Preview " + (level ? level.label : role),
+        email: "",
+        phone: "",
+        role: role,
+        team: role === "worker" ? "Men's Team" : role === "director" ? "Director" : "Operations"
+      };
+      C.state.users.push(user);
+    }
+    C.currentUserId = user.id;
+    localStorage.setItem("campOpsCurrentUser", C.currentUserId);
+    C.switchUserModalOpen = false;
+    if (!C.canAccess(C.view)) C.view = role === "requester" ? "requestForm" : "dashboard";
     C.save();
     render();
   }

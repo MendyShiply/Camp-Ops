@@ -35,6 +35,16 @@
       "<div class=\"actions full\"><button class=\"btn\" id=\"save-user-modal\">Save user</button><button class=\"btn secondary\" id=\"cancel-user-modal-2\">Cancel</button></div></div></section></div>";
   };
 
+  window.CampOpsViews.switchUserModal = function () {
+    return "<div class=\"modal-backdrop\"><section class=\"panel modal-card wide-modal\"><div class=\"topbar\"><div><h2>Switch view</h2><p class=\"muted\">Preview what each access level sees.</p></div><button class=\"btn secondary\" id=\"cancel-switch-user\">Cancel</button></div>" +
+      "<h3>Preview by access level</h3><div class=\"access-grid switch-role-grid\">" + C.accessLevels.map(function (level) {
+        return "<button class=\"access-card switch-role-card\" data-switch-role=\"" + level.id + "\"><strong>" + C.esc(level.label) + "</strong><span>" + C.esc(level.detail) + "</span></button>";
+      }).join("") + "</div>" +
+      "<h3>Or switch to a real user</h3><div class=\"grid cols-3 switch-user-grid\">" + C.state.users.map(function (user) {
+        return "<button class=\"user-switch user-pick\" data-user=\"" + user.id + "\"><strong>" + C.esc(user.name) + "</strong><span>" + C.esc(C.roleLabel(user.role)) + " - " + C.esc(user.team) + "</span><small>" + C.esc(user.email || "No email yet") + "</small></button>";
+      }).join("") + "</div><div class=\"actions\"><button class=\"btn secondary\" id=\"cancel-switch-user-2\">Cancel</button><button class=\"btn secondary\" data-view=\"users\">Manage users</button></div></section></div>";
+  };
+
   window.CampOpsViews.settings = function () {
     return "<div class=\"topbar\"><div><h2>Settings</h2><p class=\"muted\">For production, put these values in js/config.js so nobody has to enter them on the live link.</p></div></div><section class=\"panel\">" +
       window.CampOpsViews.setupForm(true) + "</section>";

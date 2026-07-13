@@ -192,6 +192,7 @@
     selectedInventoryId: null,
     inventoryModalOpen: false,
     inventoryAutomationId: null,
+    switchUserModalOpen: false,
     inventorySearch: "",
     inventorySort: "item",
     inventorySortDir: "asc",

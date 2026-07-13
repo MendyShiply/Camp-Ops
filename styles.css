@@ -447,6 +447,24 @@ button {
   padding: 8px;
 }
 
+.switch-role-grid {
+  margin: 10px 0 18px;
+}
+
+.switch-role-card {
+  cursor: pointer;
+  text-align: left;
+}
+
+.switch-role-card:hover,
+.switch-user-grid .user-switch:hover {
+  border-color: var(--accent);
+}
+
+.switch-user-grid {
+  margin: 10px 0 18px;
+}
+
 .user-actions {
   display: flex;
   flex-wrap: wrap;
