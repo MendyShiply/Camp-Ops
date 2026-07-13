@@ -221,6 +221,19 @@
     document.querySelectorAll("[data-reorder-inventory]").forEach(function (button) {
       button.addEventListener("click", function () { createInventorySupplyRequest(button.dataset.reorderInventory); });
     });
+    var newInventoryItem = document.getElementById("new-inventory-item");
+    if (newInventoryItem) newInventoryItem.addEventListener("click", function () {
+      C.inventoryModalOpen = true;
+      render();
+    });
+    var saveInventoryItem = document.getElementById("save-inventory-item");
+    if (saveInventoryItem) saveInventoryItem.addEventListener("click", createInventoryItem);
+    document.querySelectorAll("#cancel-inventory-modal, #cancel-inventory-modal-2").forEach(function (button) {
+      button.addEventListener("click", function () {
+        C.inventoryModalOpen = false;
+        render();
+      });
+    });
     document.querySelectorAll("[data-toggle-inventory-auto]").forEach(function (button) {
       button.addEventListener("click", function () { toggleInventoryAuto(button.dataset.toggleInventoryAuto); });
     });
@@ -598,6 +611,37 @@
     });
     C.save();
     C.view = "supplies";
+    render();
+  }
+
+  function createInventoryItem() {
+    var name = document.getElementById("inventory-new-item").value.trim();
+    if (!name) return alert("Please add a product name.");
+    var quantity = Math.max(0, Number(document.getElementById("inventory-new-quantity").value || 0));
+    var unit = document.getElementById("inventory-new-unit").value.trim() || "each";
+    var locationId = document.getElementById("inventory-new-location").value;
+    C.state.inventory.unshift({
+      id: C.uid("inv"),
+      item: name,
+      category: document.getElementById("inventory-new-category").value,
+      manufacturer: document.getElementById("inventory-new-manufacturer").value.trim(),
+      sku: document.getElementById("inventory-new-sku").value.trim(),
+      color: document.getElementById("inventory-new-color").value.trim(),
+      size: document.getElementById("inventory-new-size").value.trim(),
+      itemUrl: document.getElementById("inventory-new-url").value.trim(),
+      codes: document.getElementById("inventory-new-codes").value.trim(),
+      quantity: quantity,
+      unit: unit,
+      lowAt: Math.max(0, Number(document.getElementById("inventory-new-low-at").value || 0)),
+      requestQty: Math.max(0, Number(document.getElementById("inventory-new-request-qty").value || 1)),
+      autoRequest: document.getElementById("inventory-new-auto").checked,
+      locations: [{ locationId: locationId, quantity: quantity, note: "Initial location" }],
+      notes: document.getElementById("inventory-new-notes").value.trim()
+    });
+    C.inventoryModalOpen = false;
+    C.selectedInventoryId = C.state.inventory[0].id;
+    maybeAutoRequestInventory(C.state.inventory[0]);
+    C.save();
     render();
   }
 

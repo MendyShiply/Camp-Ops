@@ -19,10 +19,10 @@
     var lowItems = (C.state.inventory || []).filter(function (item) {
       return Number(item.quantity || 0) <= Number(item.lowAt || 0);
     }).length;
-    return "<div class=\"topbar\"><div><h2>Inventory</h2><p class=\"muted\">" + lowItems + " low-stock items. Search, sort, update quantities, and create purchasing requests from the sheet.</p></div><button class=\"btn\" data-view=\"supplies\">Supply requests</button></div>" +
+    return "<div class=\"topbar\"><div><h2>Inventory</h2><p class=\"muted\">" + lowItems + " low-stock items. Search, sort, update quantities, and create purchasing requests from the sheet.</p></div><div class=\"actions\"><button class=\"btn\" id=\"new-inventory-item\">Add product</button><button class=\"btn secondary\" data-view=\"supplies\">Supply requests</button></div></div>" +
       "<section class=\"panel inventory-toolbar\"><div class=\"field\"><label>Search inventory</label><input id=\"inventory-search\" value=\"" + C.esc(C.inventorySearch || "") + "\" placeholder=\"Product, SKU, manufacturer, code, location...\"></div><button class=\"btn secondary\" data-inventory-sort=\"item\">A-Z</button><button class=\"btn secondary\" data-inventory-sort=\"quantity\">Qty</button><button class=\"btn secondary\" data-inventory-sort=\"location\">Location</button></section>" +
       "<section class=\"panel inventory-sheet\">" + inventoryTable() + "</section>" +
-      inventoryDetail();
+      inventoryDetail() + (C.inventoryModalOpen ? inventoryModal() : "");
   };
 
   function inventoryTable() {
@@ -83,5 +83,25 @@
       "<div class=\"detail-grid\"><div><span>Manufacturer</span><input data-inventory-field=\"manufacturer\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.manufacturer || "") + "\"></div><div><span>SKU</span><input data-inventory-field=\"sku\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.sku || "") + "\"></div><div><span>Color</span><input data-inventory-field=\"color\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.color || "") + "\"></div><div><span>Size</span><input data-inventory-field=\"size\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.size || "") + "\"></div><div><span>Request qty</span><input data-inventory-field=\"requestQty\" data-inventory-id=\"" + item.id + "\" type=\"number\" min=\"0\" value=\"" + Number(item.requestQty || 0) + "\"></div><div><span>Item link</span><input data-inventory-field=\"itemUrl\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.itemUrl || "") + "\"></div><div><span>Codes</span><input data-inventory-field=\"codes\" data-inventory-id=\"" + item.id + "\" value=\"" + C.esc(item.codes || "") + "\"></div><div><span>Auto request</span><strong>" + (item.autoRequest ? "On" : "Off") + "</strong></div></div>" +
       (item.itemUrl ? "<p><a href=\"" + C.esc(item.itemUrl) + "\" target=\"_blank\" rel=\"noopener\">Open product link</a></p>" : "") +
       "<h4>Stored in</h4><div class=\"stored-list\">" + (item.locations || []).map(function (spot) { return "<div><strong>" + C.esc(C.locationName(spot.locationId)) + "</strong><span>" + Number(spot.quantity || 0) + " " + C.esc(item.unit) + "</span><small>" + C.esc(spot.note || "") + "</small></div>"; }).join("") + "</div><div class=\"actions\"><button class=\"btn\" data-reorder-inventory=\"" + item.id + "\">Request more</button></div></section>";
+  }
+
+  function inventoryModal() {
+    return "<div class=\"modal-backdrop\"><section class=\"panel modal-card wide-modal\"><div class=\"topbar\"><div><h2>Add product</h2><p class=\"muted\">Create a new inventory row with purchasing and location details.</p></div><button class=\"btn secondary\" id=\"cancel-inventory-modal\">Cancel</button></div>" +
+      "<div class=\"form-grid\"><div class=\"field\"><label>Product name</label><input id=\"inventory-new-item\" placeholder=\"Toilet paper\"></div>" +
+      "<div class=\"field\"><label>Category</label><select id=\"inventory-new-category\"><option>Cleaning</option><option>Tools / Hardware</option><option>Machine / Outdoor</option><option>Kitchen</option><option>Office</option><option>Other</option></select></div>" +
+      "<div class=\"field\"><label>Manufacturer</label><input id=\"inventory-new-manufacturer\"></div>" +
+      "<div class=\"field\"><label>SKU</label><input id=\"inventory-new-sku\"></div>" +
+      "<div class=\"field\"><label>Color</label><input id=\"inventory-new-color\"></div>" +
+      "<div class=\"field\"><label>Size</label><input id=\"inventory-new-size\"></div>" +
+      "<div class=\"field\"><label>Qty</label><input id=\"inventory-new-quantity\" type=\"number\" min=\"0\" value=\"0\"></div>" +
+      "<div class=\"field\"><label>Unit</label><input id=\"inventory-new-unit\" placeholder=\"cases, boxes, each\"></div>" +
+      "<div class=\"field\"><label>Low at</label><input id=\"inventory-new-low-at\" type=\"number\" min=\"0\" value=\"0\"></div>" +
+      "<div class=\"field\"><label>Request qty</label><input id=\"inventory-new-request-qty\" type=\"number\" min=\"0\" value=\"1\"></div>" +
+      "<div class=\"field full\"><label>Stored location</label>" + V.locationSelect("inventory-new-location") + "</div>" +
+      "<div class=\"field full\"><label>Product link</label><input id=\"inventory-new-url\" placeholder=\"https://...\"></div>" +
+      "<div class=\"field\"><label>Codes / tags</label><input id=\"inventory-new-codes\" placeholder=\"janitorial, bathrooms\"></div>" +
+      "<label class=\"check-field\"><input id=\"inventory-new-auto\" type=\"checkbox\"> Auto request when low</label>" +
+      "<div class=\"field full\"><label>Notes</label><textarea id=\"inventory-new-notes\"></textarea></div>" +
+      "<div class=\"actions full\"><button class=\"btn\" id=\"save-inventory-item\">Save product</button><button class=\"btn secondary\" id=\"cancel-inventory-modal-2\">Cancel</button></div></div></section></div>";
   }
 })();

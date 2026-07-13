@@ -172,6 +172,7 @@
     selectedTaskId: null,
     selectedRequestId: null,
     selectedInventoryId: null,
+    inventoryModalOpen: false,
     inventorySearch: "",
     inventorySort: "item",
     inventorySortDir: "asc",
