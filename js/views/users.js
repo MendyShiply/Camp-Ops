@@ -47,12 +47,13 @@
 
   window.CampOpsViews.settings = function () {
     return "<div class=\"topbar\"><div><h2>Settings</h2><p class=\"muted\">For production, put these values in js/config.js so nobody has to enter them on the live link.</p></div></div><section class=\"panel\">" +
-      window.CampOpsViews.setupForm(true) + "</section>";
+      window.CampOpsViews.setupForm(true) + "</section><section class=\"panel auth-note\"><h3>Phone notifications</h3><p class=\"muted\">Requires a VAPID public key and the Supabase push Edge Function. After those are set, enable this device for push alerts.</p><button class=\"btn\" id=\"enable-push\">Enable phone notifications</button></section>";
   };
 
   window.CampOpsViews.setupForm = function (showReset) {
     return "<div class=\"form-grid\" style=\"margin-top:16px\"><div class=\"field full\"><label>Supabase URL</label><input id=\"supabase-url\" placeholder=\"https://your-project.supabase.co\" value=\"" + C.esc(C.config.url || "") + "\"></div>" +
       "<div class=\"field full\"><label>Supabase anon key</label><input id=\"supabase-key\" placeholder=\"ey...\" value=\"" + C.esc(C.config.anonKey || "") + "\"></div>" +
+      "<div class=\"field full\"><label>VAPID public key for phone push</label><input id=\"vapid-public-key\" placeholder=\"B...\" value=\"" + C.esc(C.config.vapidPublicKey || "") + "\"></div>" +
       "<button class=\"btn\" id=\"save-config\">Save connection</button>" + (showReset ? "<button class=\"btn secondary\" id=\"reset-local\">Reset local demo data</button>" : "") + "</div>" +
       "<p class=\"muted\">Run <strong>supabase-schema.sql</strong> in Supabase first. Passwords are handled by Supabase Auth, never by Camp Ops.</p>";
   };

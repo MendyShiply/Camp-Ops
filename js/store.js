@@ -3,6 +3,9 @@
   var OLD_STORAGE_KEY = "campOpsState.v1";
   var CONFIG_KEY = "campOpsSupabase.v1";
   var AUTH_KEY = "campOpsAuthSession.v1";
+  var CLIENT_KEY = "campOpsClientId.v1";
+  var SYNC_ROW_ID = "camp-ops-main";
+  var COLLECTIONS = ["users", "employees", "locations", "tasks", "requests", "supplyRequests", "inventory", "notifications", "timeEntries", "buildings", "rooms"];
   var seed = window.CampOpsSeed;
   var params = new URLSearchParams(location.search);
 
@@ -12,6 +15,110 @@
 
   function normalizeSupabaseUrl(url) {
     return String(url || "").trim().replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
+  }
+
+  function nowIso() {
+    return new Date().toISOString();
+  }
+
+  function clientId() {
+    var id = localStorage.getItem(CLIENT_KEY);
+    if (!id) {
+      id = "client-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+      localStorage.setItem(CLIENT_KEY, id);
+    }
+    return id;
+  }
+
+  function stableRecord(value) {
+    var copy = clone(value || {});
+    delete copy._updatedAt;
+    delete copy._clientId;
+    return JSON.stringify(copy);
+  }
+
+  function byId(items) {
+    var map = {};
+    (items || []).forEach(function (item) {
+      if (item && item.id) map[item.id] = item;
+    });
+    return map;
+  }
+
+  function ensureSyncMeta(state) {
+    state.sync = state.sync || {};
+    state.sync.clientId = state.sync.clientId || clientId();
+    state.sync.updatedAt = state.sync.updatedAt || nowIso();
+    state.tombstones = state.tombstones || {};
+    COLLECTIONS.forEach(function (collection) {
+      state[collection] = state[collection] || [];
+      state[collection].forEach(function (item) {
+        if (!item.id) item.id = collection + "-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+        item._updatedAt = item._updatedAt || item.updatedAt || item.createdAt || nowIso();
+        item._clientId = item._clientId || state.sync.clientId;
+      });
+    });
+    return state;
+  }
+
+  function stampChangedRecords(previous, next) {
+    var stamp = nowIso();
+    next.sync = next.sync || {};
+    next.sync.clientId = clientId();
+    next.sync.updatedAt = stamp;
+    next.tombstones = next.tombstones || {};
+    COLLECTIONS.forEach(function (collection) {
+      var before = byId((previous || {})[collection] || []);
+      (next[collection] || []).forEach(function (item) {
+        if (!item.id) item.id = collection + "-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+        if (!item._updatedAt || !before[item.id] || stableRecord(before[item.id]) !== stableRecord(item)) {
+          item._updatedAt = stamp;
+          item._clientId = next.sync.clientId;
+        }
+      });
+    });
+  }
+
+  function mergeCollection(localItems, remoteItems, tombstones) {
+    var merged = {};
+    (remoteItems || []).concat(localItems || []).forEach(function (item) {
+      if (!item || !item.id) return;
+      var deletedAt = tombstones && tombstones[item.id];
+      if (deletedAt && String(deletedAt) >= String(item._updatedAt || item.updatedAt || item.createdAt || "")) return;
+      var existing = merged[item.id];
+      if (!existing || String(item._updatedAt || "") >= String(existing._updatedAt || "")) merged[item.id] = item;
+    });
+    return Object.keys(merged).map(function (id) { return merged[id]; });
+  }
+
+  async function fetchAppStateData(app, id) {
+    var response = await fetch(app.config.url + "/rest/v1/app_state?id=eq." + encodeURIComponent(id) + "&select=data", {
+      headers: app.authHeaders()
+    });
+    if (!response.ok) return null;
+    var rows = await response.json();
+    return rows && rows[0] && rows[0].data ? rows[0].data : null;
+  }
+
+  function notificationLink(link) {
+    if (!link) return location.origin + location.pathname;
+    return location.origin + location.pathname + "#" + encodeURIComponent(link);
+  }
+
+  function mergeState(localState, remoteState) {
+    var local = ensureSyncMeta(migrateState(Object.assign(clone(seed), localState || {})));
+    var remote = ensureSyncMeta(migrateState(Object.assign(clone(seed), remoteState || {})));
+    var merged = Object.assign(clone(seed), remote, local);
+    merged.sync = {
+      clientId: clientId(),
+      updatedAt: nowIso(),
+      remoteUpdatedAt: remote.sync && remote.sync.updatedAt ? remote.sync.updatedAt : ""
+    };
+    merged.tombstones = Object.assign({}, remote.tombstones || {}, local.tombstones || {});
+    COLLECTIONS.forEach(function (collection) {
+      merged[collection] = mergeCollection(local[collection], remote[collection], merged.tombstones);
+    });
+    return migrateState(merged);
   }
 
   function loadState() {
@@ -162,7 +269,7 @@
     });
     state.notifications = state.notifications || [];
     state.timeEntries = state.timeEntries || [];
-    return state;
+    return ensureSyncMeta(state);
   }
 
   function esc(value) {
@@ -171,17 +278,21 @@
     });
   }
 
+  var loadedState = ensureSyncMeta(loadState());
+  var baselineState = clone(loadedState);
+
   window.CampOps = {
     STORAGE_KEY: STORAGE_KEY,
     CONFIG_KEY: CONFIG_KEY,
     AUTH_KEY: AUTH_KEY,
-    state: loadState(),
+    state: loadedState,
     config: (function () {
       var fileConfig = window.CampOpsConfig || {};
       var browserConfig = JSON.parse(localStorage.getItem(CONFIG_KEY) || "{}");
       return {
         url: normalizeSupabaseUrl(browserConfig.url || fileConfig.supabaseUrl || fileConfig.url || ""),
-        anonKey: browserConfig.anonKey || fileConfig.supabaseAnonKey || fileConfig.anonKey || ""
+        anonKey: browserConfig.anonKey || fileConfig.supabaseAnonKey || fileConfig.anonKey || "",
+        vapidPublicKey: browserConfig.vapidPublicKey || fileConfig.vapidPublicKey || ""
       };
     })(),
     auth: JSON.parse(localStorage.getItem(AUTH_KEY) || "null"),
@@ -205,13 +316,16 @@
       return prefix + "-" + Date.now() + "-" + Math.random().toString(16).slice(2);
     },
     save: function () {
+      stampChangedRecords(baselineState, this.state);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      baselineState = clone(this.state);
       this.syncSupabase();
     },
     saveConfig: function (next) {
       this.config = {
         url: normalizeSupabaseUrl(next.url),
-        anonKey: next.anonKey
+        anonKey: next.anonKey,
+        vapidPublicKey: next.vapidPublicKey || ""
       };
       localStorage.setItem(CONFIG_KEY, JSON.stringify(next));
       this.remoteLoaded = false;
@@ -265,9 +379,30 @@
       if (!response.ok) throw new Error(body.msg || body.error_description || "Could not send password reset.");
       return true;
     },
+    adminUserAction: async function (action, payload) {
+      if (!this.config.url || !this.config.anonKey || !this.isSignedIn() || !navigator.onLine) throw new Error("Admin function is not available offline.");
+      var response = await fetch(this.config.url + "/functions/v1/admin-users", {
+        method: "POST",
+        headers: Object.assign({}, this.authHeaders(), {
+          "Content-Type": "application/json"
+        }),
+        body: JSON.stringify(Object.assign({ action: action }, payload || {}))
+      });
+      var body = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(body.error || body.msg || "Admin user action failed.");
+      return body;
+    },
     sendInvite: async function (email) {
       email = String(email || "").trim();
       if (!email) throw new Error("Please enter an email address.");
+      if (this.isSignedIn()) {
+        try {
+          await this.adminUserAction("invite", { email: email, redirectTo: location.origin });
+          return true;
+        } catch (error) {
+          console.warn("Admin invite function failed, falling back to OTP invite", error);
+        }
+      }
       var response = await fetch(this.config.url + "/auth/v1/otp", {
         method: "POST",
         headers: {
@@ -283,6 +418,74 @@
       var body = await response.json().catch(function () { return {}; });
       if (!response.ok) throw new Error(body.msg || body.error_description || "Could not send invite.");
       return true;
+    },
+    deleteAuthUserByEmail: async function (email) {
+      email = String(email || "").trim();
+      if (!email || !this.isSignedIn()) return false;
+      try {
+        await this.adminUserAction("deleteByEmail", { email: email });
+        return true;
+      } catch (error) {
+        console.warn("Auth user delete failed", error);
+        return false;
+      }
+    },
+    enablePushNotifications: async function () {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("Push notifications are not supported on this device/browser.");
+      if (!this.config.vapidPublicKey) throw new Error("Add the VAPID public key in Settings first.");
+      var permission = await Notification.requestPermission();
+      if (permission !== "granted") throw new Error("Notification permission was not granted.");
+      var registration = await navigator.serviceWorker.ready;
+      var existing = await registration.pushManager.getSubscription();
+      var subscription = existing || await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: this.urlBase64ToUint8Array(this.config.vapidPublicKey)
+      });
+      await this.savePushSubscription(subscription);
+      return true;
+    },
+    savePushSubscription: async function (subscription) {
+      if (!this.config.url || !this.config.anonKey || !this.isSignedIn() || !navigator.onLine) return false;
+      var response = await fetch(this.config.url + "/rest/v1/push_subscriptions?on_conflict=user_id,endpoint", {
+        method: "POST",
+        headers: Object.assign({}, this.authHeaders(), {
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates"
+        }),
+        body: JSON.stringify([{
+          user_id: this.me().id,
+          endpoint: subscription.endpoint,
+          subscription: subscription.toJSON(),
+          user_agent: navigator.userAgent,
+          updated_at: nowIso()
+        }])
+      });
+      if (!response.ok) throw new Error("Could not save push subscription.");
+      return true;
+    },
+    sendPushNotification: async function (userId, title, body, link) {
+      if (!this.config.url || !this.config.anonKey || !this.isSignedIn() || !navigator.onLine) return false;
+      try {
+        var response = await fetch(this.config.url + "/functions/v1/send-push", {
+          method: "POST",
+          headers: Object.assign({}, this.authHeaders(), {
+            "Content-Type": "application/json"
+          }),
+          body: JSON.stringify({ userId: userId, title: title, body: body || "", url: notificationLink(link) })
+        });
+        return response.ok;
+      } catch (error) {
+        console.warn("Push notification failed", error);
+        return false;
+      }
+    },
+    urlBase64ToUint8Array: function (base64String) {
+      var padding = "=".repeat((4 - base64String.length % 4) % 4);
+      var base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      var rawData = atob(base64);
+      var outputArray = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+      return outputArray;
     },
     applyAuthUser: function () {
       var authUser = this.authUser();
@@ -343,7 +546,7 @@
       if (role === "director") return view !== "settings";
       if (role === "supervisor") return ["dashboard", "tasks", "taskDetail", "requests", "requestDetail", "supplies", "inventory", "clock", "schedule", "employees", "buildings"].indexOf(view) >= 0;
       if (role === "secretary") return ["dashboard", "requests", "requestDetail", "requestForm", "clock", "schedule", "buildings"].indexOf(view) >= 0;
-      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requests", "requestDetail", "requestForm", "supplies", "inventory", "clock", "schedule", "buildings"].indexOf(view) >= 0;
+      if (role === "worker") return ["dashboard", "tasks", "taskDetail", "requestDetail", "requestForm", "supplies", "clock", "schedule", "buildings"].indexOf(view) >= 0;
       return view === "requestForm";
     },
     locationName: function (id) {
@@ -368,6 +571,17 @@
     },
     requestById: function (id) {
       return this.state.requests.find(function (request) { return request.id === id; });
+    },
+    deleteRequest: function (requestId) {
+      var request = this.requestById(requestId);
+      if (!request) return false;
+      var stamp = nowIso();
+      this.state.tombstones = this.state.tombstones || {};
+      this.state.tombstones[request.id] = stamp;
+      this.state.requests = this.state.requests.filter(function (item) { return item.id !== request.id; });
+      if (request.source === "staff_requests") this.deleteStaffRequest(request.id);
+      this.save();
+      return true;
     },
     userById: function (id) {
       return this.state.users.find(function (user) { return user.id === id; });
@@ -402,6 +616,7 @@
         read: false,
         createdAt: new Date().toISOString()
       });
+      this.sendPushNotification(userId, title, body, link);
     },
     addMentionNotifications: function (text, title, body, link) {
       var self = this;
@@ -464,8 +679,11 @@
         });
         if (!response.ok) return;
         var rows = await response.json();
+        var tombstones = this.state.tombstones || {};
         var local = this.state.requests.filter(function (request) { return request.source !== "staff_requests"; });
-        this.state.requests = rows.map(this.staffRequestToApp).concat(local);
+        this.state.requests = rows.map(this.staffRequestToApp).filter(function (request) {
+          return !tombstones[request.id];
+        }).concat(local);
       } catch (error) {
         console.warn("Staff request load failed", error);
       }
@@ -504,6 +722,15 @@
         body: JSON.stringify({ status: status, updated_at: new Date().toISOString() })
       });
     },
+    deleteStaffRequest: async function (requestId) {
+      if (!this.config.url || !this.config.anonKey || !this.isSignedIn() || !navigator.onLine) return;
+      await fetch(this.config.url + "/rest/v1/staff_requests?id=eq." + encodeURIComponent(requestId), {
+        method: "DELETE",
+        headers: this.authHeaders()
+      }).catch(function (error) {
+        console.warn("Staff request delete failed", error);
+      });
+    },
     fileToDataUrl: function (file) {
       return new Promise(function (resolve, reject) {
         var reader = new FileReader();
@@ -515,6 +742,12 @@
     syncSupabase: async function () {
       if (!this.config.url || !this.config.anonKey || !navigator.onLine) return;
       try {
+        var remoteData = await fetchAppStateData(this, SYNC_ROW_ID) || await fetchAppStateData(this, "local-mvp");
+        if (remoteData) {
+          this.state = mergeState(this.state, remoteData);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+          baselineState = clone(this.state);
+        }
         await fetch(this.config.url + "/rest/v1/app_state?on_conflict=id", {
           method: "POST",
           headers: {
@@ -523,7 +756,7 @@
             "Content-Type": "application/json",
             Prefer: "resolution=merge-duplicates"
           },
-          body: JSON.stringify([{ id: "local-mvp", data: this.state, updated_at: new Date().toISOString() }])
+          body: JSON.stringify([{ id: SYNC_ROW_ID, data: this.state, updated_at: nowIso() }])
         });
       } catch (error) {
         console.warn("Supabase sync failed", error);
@@ -533,14 +766,11 @@
       if (this.remoteLoaded || !this.config.url || !this.config.anonKey || !navigator.onLine) return;
       this.remoteLoaded = true;
       try {
-        var response = await fetch(this.config.url + "/rest/v1/app_state?id=eq.local-mvp&select=data", {
-          headers: this.authHeaders()
-        });
-        if (!response.ok) return;
-        var rows = await response.json();
-        if (rows && rows[0] && rows[0].data && Array.isArray(rows[0].data.tasks) && rows[0].data.tasks.length) {
-          this.state = migrateState(Object.assign(clone(seed), rows[0].data));
+        var remoteData = await fetchAppStateData(this, SYNC_ROW_ID) || await fetchAppStateData(this, "local-mvp");
+        if (remoteData && Array.isArray(remoteData.tasks) && remoteData.tasks.length) {
+          this.state = mergeState(this.state, remoteData);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+          baselineState = clone(this.state);
         }
         await this.loadStaffRequests();
         window.CampOpsApp.render();

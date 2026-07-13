@@ -47,6 +47,7 @@
         (C.isAdmin() && status === "pending" ? "<button class=\"btn secondary\" data-request-action=\"approve\" data-request-id=\"" + request.id + "\">Approve</button><button class=\"btn danger\" data-request-action=\"reject\" data-request-id=\"" + request.id + "\">Reject</button>" : "") +
         (C.isAdmin() && status === "approved" ? "<button class=\"btn\" data-request-action=\"task\" data-request-id=\"" + request.id + "\">Create task</button>" : "") +
         (request.taskId ? "<button class=\"btn secondary\" data-open-task=\"" + request.taskId + "\">Open task</button>" : "") +
+        (C.isAdmin() ? "<button class=\"btn danger\" data-request-delete=\"" + request.id + "\">Delete</button>" : "") +
       "</div></article>";
   }
 
@@ -64,6 +65,7 @@
           (C.isAdmin() && status === "pending" ? "<button class=\"btn\" data-request-action=\"approve\" data-request-id=\"" + request.id + "\">Approve</button><button class=\"btn danger\" data-request-action=\"reject\" data-request-id=\"" + request.id + "\">Reject</button>" : "") +
           (C.isAdmin() && status === "approved" ? "<button class=\"btn\" data-request-action=\"task\" data-request-id=\"" + request.id + "\">Create task</button>" : "") +
           (request.taskId ? "<button class=\"btn secondary\" data-open-task=\"" + request.taskId + "\">Open task</button>" : "") +
+          (C.isAdmin() ? "<button class=\"btn danger\" data-request-delete=\"" + request.id + "\">Delete request</button>" : "") +
         "</div></div>" +
         "<div class=\"panel task-side\"><h3>Request conversation</h3><div class=\"chat-thread\">" + (request.chat || []).map(V.messageHtml).join("") + "</div><div class=\"form-grid chat-composer\"><div class=\"field full\"><textarea id=\"request-chat-text\" placeholder=\"Message, @mention, question, or note...\"></textarea></div><div class=\"field chat-upload\"><input id=\"request-chat-file\" type=\"file\" accept=\"image/*,.pdf,.doc,.docx\"></div><button class=\"btn\" data-request-action=\"chat\" data-request-id=\"" + request.id + "\">Send</button></div></div>" +
       "</div></section>";

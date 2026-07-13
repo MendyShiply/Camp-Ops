@@ -4,7 +4,18 @@
   var app = document.getElementById("app");
 
   function nav() {
-    var items = [
+    var role = C.me().role;
+    var items = role === "worker" ? [
+      ["dashboard", "Dashboard"],
+      ["tasks", "Tasks"],
+      ["requestForm", "New Request"],
+      ["supplies", "Supplies & Tools"],
+      ["clock", "Clock In/Out"],
+      ["schedule", "Schedule"],
+      ["buildings", "Buildings"]
+    ] : role === "requester" ? [
+      ["requestForm", "New Request"]
+    ] : [
       ["dashboard", "Dashboard"],
       ["tasks", "Tasks"],
       ["requests", "Requests"],
@@ -24,6 +35,7 @@
     if (!C.canAccess(C.view)) C.view = C.me().role === "requester" ? "requestForm" : "dashboard";
     if (C.view === "tasks") return V.tasks();
     if (C.view === "taskDetail") return V.taskDetail();
+    if (C.view === "requestForm") return "<div class=\"topbar\"><div><h2>New request</h2><p class=\"muted\">Send the office what is needed without opening the full request board.</p></div></div><section class=\"panel\">" + V.requestForm() + "</section>";
     if (C.view === "requests") return V.requests();
     if (C.view === "requestDetail") return V.requestDetail();
     if (C.view === "supplies") return V.supplies();
@@ -164,6 +176,9 @@
     document.querySelectorAll("[data-request-action]").forEach(function (button) {
       button.addEventListener("click", function () { handleRequestAction(button); });
     });
+    document.querySelectorAll("[data-request-delete]").forEach(function (button) {
+      button.addEventListener("click", function () { deleteRequest(button.dataset.requestDelete); });
+    });
     document.querySelectorAll("[data-task-cost]").forEach(function (input) {
       input.addEventListener("change", function () {
         var task = C.taskById(input.dataset.taskCost);
@@ -226,8 +241,8 @@
     });
     var openRequestForm = document.getElementById("open-request-form");
     if (openRequestForm) openRequestForm.addEventListener("click", function () {
-      document.querySelector(".main").innerHTML = "<div class=\"topbar\"><h2>New request</h2></div><section class=\"panel\">" + V.requestForm() + "</section>";
-      bind();
+      C.view = "requestForm";
+      render();
     });
     var submitRequest = document.getElementById("submit-request");
     if (submitRequest) submitRequest.addEventListener("click", createRequest);
@@ -387,10 +402,20 @@
     if (saveConfig) saveConfig.addEventListener("click", function () {
       C.saveConfig({
         url: document.getElementById("supabase-url").value.trim().replace(/\/$/, ""),
-        anonKey: document.getElementById("supabase-key").value.trim()
+        anonKey: document.getElementById("supabase-key").value.trim(),
+        vapidPublicKey: document.getElementById("vapid-public-key").value.trim()
       });
       C.hydrateSupabase();
       render();
+    });
+    var enablePush = document.getElementById("enable-push");
+    if (enablePush) enablePush.addEventListener("click", async function () {
+      try {
+        await C.enablePushNotifications();
+        alert("Phone notifications are enabled on this device.");
+      } catch (error) {
+        alert(error.message || "Could not enable phone notifications.");
+      }
     });
     var resetLocal = document.getElementById("reset-local");
     if (resetLocal) resetLocal.addEventListener("click", function () {
@@ -549,19 +574,21 @@
     }
   }
 
-  function deleteUser(userId) {
+  async function deleteUser(userId) {
     var user = C.state.users.find(function (item) { return item.id === userId; });
     if (!user) return;
     if (user.id === C.me().id) return alert("You cannot delete the user you are currently using.");
     if (user.role === "owner" && C.state.users.filter(function (item) { return item.role === "owner"; }).length <= 1) {
       return alert("You need at least one Owner user.");
     }
-    if (!confirm("Delete " + user.name + " from Camp Ops access? This does not delete the Supabase Auth account.")) return;
+    if (!confirm("Delete " + user.name + " from Camp Ops access? If the Supabase admin function is deployed, this also removes their login account.")) return;
+    var authDeleted = user.email ? await C.deleteAuthUserByEmail(user.email) : true;
     C.state.users = C.state.users.filter(function (item) { return item.id !== userId; });
     (C.state.employees || []).forEach(function (employee) {
       if (employee.userId === userId) employee.userId = "";
     });
     C.save();
+    if (user.email && !authDeleted) alert("Camp Ops access was removed, but the Supabase Auth login could not be deleted. Check that the admin-users Edge Function is deployed and you are Owner/Director.");
     render();
   }
 
@@ -675,6 +702,16 @@
       C.notifyRequestParticipants(request, "New request message", request.title);
     }
     C.save();
+    render();
+  }
+
+  function deleteRequest(requestId) {
+    var request = C.requestById(requestId);
+    if (!request) return;
+    if (!confirm("Delete this request? This removes it from request boards and syncs the delete when online.")) return;
+    C.deleteRequest(requestId);
+    C.selectedRequestId = null;
+    C.view = "requests";
     render();
   }
 
@@ -931,6 +968,10 @@
   }
 
   window.CampOpsApp = { render: render };
+  window.addEventListener("online", function () {
+    C.remoteLoaded = false;
+    C.syncSupabase().then(function () { return C.hydrateSupabase(); }).then(render).catch(function () {});
+  });
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js").catch(function () {});
   render();
 })();
