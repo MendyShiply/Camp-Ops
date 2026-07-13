@@ -200,6 +200,10 @@
   overflow-x: auto;
 }
 
+.board-columns.single {
+  grid-template-columns: 1fr;
+}
+
 .board-column {
   min-width: 220px;
   border-right: 1px solid var(--line);
@@ -284,6 +288,49 @@
 .board-card em {
   justify-self: start;
   font-style: normal;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-open {
+  display: grid;
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.supply-entry {
+  margin-bottom: 14px;
+}
+
+.supply-card-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.supply-card-fields label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.supply-card-fields input {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  background: white;
+  color: var(--ink);
 }
 
 .empty.mini {
@@ -480,6 +527,7 @@
   top: 0;
   z-index: 1;
   background: var(--surface-2);
+  user-select: none;
 }
 
 .inventory-table tr[data-open-inventory] {
@@ -505,6 +553,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  position: relative;
+  min-height: 28px;
 }
 
 .th-label {
@@ -515,18 +565,28 @@
   text-align: left;
 }
 
-.mini-icon {
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: white;
-  color: var(--ink);
+.column-grip {
+  width: 10px;
+  align-self: stretch;
+  cursor: col-resize;
+  position: relative;
+  flex: 0 0 10px;
 }
 
-.mini-icon:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.column-grip::before {
+  content: "";
+  position: absolute;
+  inset: 4px 3px;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+
+.inventory-table th[draggable="true"] {
+  cursor: grab;
+}
+
+.inventory-table th[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .inline-number {

@@ -123,6 +123,27 @@
         moveTaskFromDrop(event.dataTransfer.getData("text/plain"), target.dataset.dropBlock, target.dataset.dropStatus);
       });
     });
+    document.querySelectorAll("[data-drag-request]").forEach(function (card) {
+      card.addEventListener("dragstart", function (event) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/request-id", card.dataset.dragRequest);
+        event.dataTransfer.setData("text/plain", card.dataset.dragRequest);
+        card.classList.add("dragging");
+      });
+      card.addEventListener("dragend", function () { card.classList.remove("dragging"); });
+    });
+    document.querySelectorAll("[data-drop-request-status]").forEach(function (target) {
+      target.addEventListener("dragover", function (event) {
+        event.preventDefault();
+        target.classList.add("drag-over");
+      });
+      target.addEventListener("dragleave", function () { target.classList.remove("drag-over"); });
+      target.addEventListener("drop", function (event) {
+        event.preventDefault();
+        target.classList.remove("drag-over");
+        moveRequestFromDrop(event.dataTransfer.getData("text/request-id") || event.dataTransfer.getData("text/plain"), target.dataset.dropRequestStatus);
+      });
+    });
     document.querySelectorAll("[data-task-action]").forEach(function (button) {
       button.addEventListener("click", function () { handleTaskAction(button); });
     });
@@ -210,6 +231,33 @@
     });
     var submitSupply = document.getElementById("submit-supply");
     if (submitSupply) submitSupply.addEventListener("click", createSupplyRequest);
+    document.querySelectorAll("[data-drag-supply]").forEach(function (card) {
+      card.addEventListener("dragstart", function (event) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/supply-id", card.dataset.dragSupply);
+        event.dataTransfer.setData("text/plain", card.dataset.dragSupply);
+        card.classList.add("dragging");
+      });
+      card.addEventListener("dragend", function () { card.classList.remove("dragging"); });
+    });
+    document.querySelectorAll("[data-drop-supply-status]").forEach(function (target) {
+      target.addEventListener("dragover", function (event) {
+        event.preventDefault();
+        target.classList.add("drag-over");
+      });
+      target.addEventListener("dragleave", function () { target.classList.remove("drag-over"); });
+      target.addEventListener("drop", function (event) {
+        event.preventDefault();
+        target.classList.remove("drag-over");
+        updateSupplyStatus(event.dataTransfer.getData("text/supply-id") || event.dataTransfer.getData("text/plain"), target.dataset.dropSupplyStatus);
+      });
+    });
+    document.querySelectorAll("[data-supply-status]").forEach(function (button) {
+      button.addEventListener("click", function () { updateSupplyStatus(button.dataset.supplyStatus, button.dataset.status); });
+    });
+    document.querySelectorAll("[data-supply-field]").forEach(function (input) {
+      input.addEventListener("change", function () { updateSupplyField(input); });
+    });
     document.querySelectorAll("[data-close-supply]").forEach(function (button) {
       button.addEventListener("click", function () {
         var request = C.state.supplyRequests.find(function (item) { return item.id === button.dataset.closeSupply; });
@@ -234,8 +282,19 @@
         render();
       });
     });
-    document.querySelectorAll("[data-toggle-inventory-auto]").forEach(function (button) {
-      button.addEventListener("click", function () { toggleInventoryAuto(button.dataset.toggleInventoryAuto); });
+    document.querySelectorAll("[data-open-inventory-automation]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        C.inventoryAutomationId = button.dataset.openInventoryAutomation;
+        render();
+      });
+    });
+    var saveInventoryAutomation = document.getElementById("save-inventory-automation");
+    if (saveInventoryAutomation) saveInventoryAutomation.addEventListener("click", saveInventoryAutomationSettings);
+    document.querySelectorAll("#cancel-inventory-automation, #cancel-inventory-automation-2").forEach(function (button) {
+      button.addEventListener("click", function () {
+        C.inventoryAutomationId = null;
+        render();
+      });
     });
     document.querySelectorAll("[data-open-inventory]").forEach(function (row) {
       row.addEventListener("click", function (event) {
@@ -247,8 +306,21 @@
     document.querySelectorAll("[data-inventory-sort]").forEach(function (button) {
       button.addEventListener("click", function () { sortInventory(button.dataset.inventorySort); });
     });
-    document.querySelectorAll("[data-inventory-column-move]").forEach(function (button) {
-      button.addEventListener("click", function () { moveInventoryColumn(button.dataset.inventoryColumnMove, button.dataset.direction); });
+    document.querySelectorAll("[data-inventory-column]").forEach(function (header) {
+      header.addEventListener("dragstart", function (event) {
+        if (event.target.closest(".column-grip")) return event.preventDefault();
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/inventory-column", header.dataset.inventoryColumn);
+        event.dataTransfer.setData("text/plain", header.dataset.inventoryColumn);
+      });
+      header.addEventListener("dragover", function (event) { event.preventDefault(); });
+      header.addEventListener("drop", function (event) {
+        event.preventDefault();
+        moveInventoryColumnTo(event.dataTransfer.getData("text/inventory-column") || event.dataTransfer.getData("text/plain"), header.dataset.inventoryColumn);
+      });
+    });
+    document.querySelectorAll("[data-resize-inventory-column]").forEach(function (handle) {
+      handle.addEventListener("mousedown", startInventoryColumnResize);
     });
     var inventorySearch = document.getElementById("inventory-search");
     if (inventorySearch) inventorySearch.addEventListener("input", function () {
@@ -324,6 +396,20 @@
     } else {
       delete task.completedBy;
       delete task.completedAt;
+    }
+    C.save();
+    render();
+  }
+
+  async function moveRequestFromDrop(requestId, status) {
+    var request = C.requestById(requestId);
+    if (!request || request.taskId) return;
+    if (status === "converted") {
+      if (request.status !== "approved") request.status = "approved";
+      createTaskFromRequest(request);
+    } else {
+      request.status = status;
+      if (request.source === "staff_requests") await C.updateStaffRequestStatus(request.id, status);
     }
     C.save();
     render();
@@ -555,7 +641,7 @@
 
   function createTaskFromRequest(request) {
     if (request.taskId && C.taskById(request.taskId)) return;
-    request.status = "approved";
+    request.status = "converted";
     var task = {
       id: C.uid("t"),
       title: request.title,
@@ -581,14 +667,49 @@
     C.state.supplyRequests.unshift({
       id: C.uid("s"),
       category: document.getElementById("supply-category").value,
-      item: document.getElementById("supply-item").value,
+      item: document.getElementById("supply-item").value.trim() || "Supply item",
+      quantity: Math.max(1, Number(document.getElementById("supply-quantity").value || 1)),
+      unit: document.getElementById("supply-unit").value.trim() || "each",
       locationId: document.getElementById("supply-location").value,
       urgency: document.getElementById("supply-urgency").value,
       note: document.getElementById("supply-note").value.trim(),
       status: "requested",
       requestedBy: C.me().id,
+      orderedBy: "",
+      trackingNumber: "",
+      vendor: "",
+      orderNote: "",
       createdAt: new Date().toISOString()
     });
+    C.save();
+    render();
+  }
+
+  function updateSupplyStatus(requestId, status) {
+    var request = C.state.supplyRequests.find(function (item) { return item.id === requestId; });
+    if (!request) return;
+    request.status = status;
+    if (status === "ordered") {
+      request.orderedBy = C.me().id;
+      request.orderedAt = request.orderedAt || new Date().toISOString();
+    }
+    if (status === "shipped") {
+      request.shippedAt = request.shippedAt || new Date().toISOString();
+      request.orderNote = request.trackingNumber ? "Tracking " + request.trackingNumber + " is in transit." : "Marked shipped / in transit.";
+    }
+    if (status === "delivered") request.deliveredAt = request.deliveredAt || new Date().toISOString();
+    C.save();
+    render();
+  }
+
+  function updateSupplyField(input) {
+    var request = C.state.supplyRequests.find(function (item) { return item.id === input.dataset.supplyId; });
+    if (!request) return;
+    request[input.dataset.supplyField] = input.value;
+    if (input.dataset.supplyField === "trackingNumber" && input.value.trim()) {
+      request.status = request.status === "requested" ? "ordered" : request.status;
+      request.orderNote = "Tracking " + input.value.trim() + " added.";
+    }
     C.save();
     render();
   }
@@ -603,9 +724,15 @@
       item: item.item,
       locationId: item.locations && item.locations[0] ? item.locations[0].locationId : "",
       urgency: Number(item.quantity || 0) <= Number(item.lowAt || 0) ? "needed today" : "normal",
-      note: "Inventory reorder. Request " + requestQty + " " + item.unit + ". Current: " + item.quantity + " " + item.unit + ". Low level: " + item.lowAt + ". SKU: " + (item.sku || "none") + ".",
+      quantity: requestQty,
+      unit: item.unit || "each",
+      note: "Inventory reorder. Request " + requestQty + " " + item.unit + ". Current total: " + inventoryTotal(item) + ". Low level: " + item.lowAt + ". SKU: " + (item.sku || "none") + ".",
       status: "requested",
-      requestedBy: C.me().id,
+      requestedBy: item.autoRequestTo || C.me().id,
+      orderedBy: "",
+      trackingNumber: "",
+      vendor: item.purchaseStore || "",
+      orderNote: "",
       inventoryId: item.id,
       createdAt: new Date().toISOString()
     });
@@ -617,7 +744,9 @@
   function createInventoryItem() {
     var name = document.getElementById("inventory-new-item").value.trim();
     if (!name) return alert("Please add a product name.");
-    var quantity = Math.max(0, Number(document.getElementById("inventory-new-quantity").value || 0));
+    var packageCount = Math.max(0, Number(document.getElementById("inventory-new-package-count").value || 0));
+    var packageQty = Math.max(1, Number(document.getElementById("inventory-new-package-qty").value || 1));
+    var quantity = packageCount * packageQty;
     var unit = document.getElementById("inventory-new-unit").value.trim() || "each";
     var locationId = document.getElementById("inventory-new-location").value;
     C.state.inventory.unshift({
@@ -632,8 +761,14 @@
       codes: document.getElementById("inventory-new-codes").value.trim(),
       quantity: quantity,
       unit: unit,
+      packageCount: packageCount,
+      packageQty: packageQty,
+      purchaseDate: document.getElementById("inventory-new-purchase-date").value,
+      purchasedBy: document.getElementById("inventory-new-purchased-by").value.trim(),
+      purchaseStore: document.getElementById("inventory-new-purchase-store").value.trim(),
       lowAt: Math.max(0, Number(document.getElementById("inventory-new-low-at").value || 0)),
       requestQty: Math.max(0, Number(document.getElementById("inventory-new-request-qty").value || 1)),
+      autoRequestTo: C.me().id,
       autoRequest: document.getElementById("inventory-new-auto").checked,
       locations: [{ locationId: locationId, quantity: quantity, note: "Initial location" }],
       notes: document.getElementById("inventory-new-notes").value.trim()
@@ -649,24 +784,35 @@
     var item = C.state.inventory.find(function (entry) { return entry.id === input.dataset.inventoryId; });
     if (!item) return;
     var field = input.dataset.inventoryField;
-    if (field === "quantity" || field === "lowAt" || field === "requestQty") item[field] = Math.max(0, Number(input.value || 0));
+    if (field === "quantity" || field === "lowAt" || field === "requestQty" || field === "packageCount" || field === "packageQty") {
+      item[field] = Math.max(field === "packageQty" ? 1 : 0, Number(input.value || 0));
+      item.quantity = inventoryTotal(item);
+    }
     else item[field] = input.value;
     maybeAutoRequestInventory(item);
     C.save();
     render();
   }
 
-  function toggleInventoryAuto(inventoryId) {
-    var item = C.state.inventory.find(function (entry) { return entry.id === inventoryId; });
+  function saveInventoryAutomationSettings() {
+    var item = C.state.inventory.find(function (entry) { return entry.id === C.inventoryAutomationId; });
     if (!item) return;
-    item.autoRequest = !item.autoRequest;
+    item.autoRequest = document.getElementById("automation-enabled").checked;
+    item.lowAt = Math.max(0, Number(document.getElementById("automation-low-at").value || 0));
+    item.requestQty = Math.max(1, Number(document.getElementById("automation-request-qty").value || 1));
+    item.autoRequestTo = document.getElementById("automation-user").value;
+    C.inventoryAutomationId = null;
     maybeAutoRequestInventory(item);
     C.save();
     render();
   }
 
+  function inventoryTotal(item) {
+    return Number(item.packageCount || item.quantity || 0) * Math.max(1, Number(item.packageQty || 1));
+  }
+
   function maybeAutoRequestInventory(item) {
-    if (!item.autoRequest || Number(item.quantity || 0) > Number(item.lowAt || 0)) return;
+    if (!item.autoRequest || Number(inventoryTotal(item)) > Number(item.lowAt || 0)) return;
     var open = C.state.supplyRequests.some(function (request) {
       return request.inventoryId === item.id && ["closed", "delivered"].indexOf(request.status) < 0;
     });
@@ -677,9 +823,15 @@
         item: item.item,
         locationId: item.locations && item.locations[0] ? item.locations[0].locationId : "",
         urgency: "needed today",
-        note: "Auto request from inventory. Request " + Number(item.requestQty || item.lowAt || 1) + " " + item.unit + ". Current: " + item.quantity + ". Low level: " + item.lowAt + ".",
+        quantity: Number(item.requestQty || item.lowAt || 1),
+        unit: item.unit || "each",
+        note: "Auto request from inventory. Request " + Number(item.requestQty || item.lowAt || 1) + " " + item.unit + ". Current total: " + inventoryTotal(item) + ". Low level: " + item.lowAt + ".",
         status: "requested",
-        requestedBy: C.me().id,
+        requestedBy: item.autoRequestTo || C.me().id,
+        orderedBy: "",
+        trackingNumber: "",
+        vendor: item.purchaseStore || "",
+        orderNote: "",
         inventoryId: item.id,
         createdAt: new Date().toISOString()
       });
@@ -695,15 +847,40 @@
     render();
   }
 
-  function moveInventoryColumn(column, direction) {
+  function moveInventoryColumnTo(column, targetColumn) {
     var columns = C.inventoryColumns || [];
-    var index = columns.indexOf(column);
-    var next = direction === "left" ? index - 1 : index + 1;
-    if (index < 0 || next < 0 || next >= columns.length) return;
-    columns.splice(index, 1);
-    columns.splice(next, 0, column);
+    var from = columns.indexOf(column);
+    var to = columns.indexOf(targetColumn);
+    if (from < 0 || to < 0 || from === to) return;
+    columns.splice(from, 1);
+    columns.splice(to, 0, column);
     C.inventoryColumns = columns;
     render();
+  }
+
+  function startInventoryColumnResize(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    var column = event.target.dataset.resizeInventoryColumn;
+    var widths = C.inventoryColumnWidths || {};
+    var startX = event.clientX;
+    var startWidth = Number(widths[column] || event.target.closest("th").offsetWidth || 140);
+    function onMove(moveEvent) {
+      widths[column] = Math.max(92, startWidth + moveEvent.clientX - startX);
+      C.inventoryColumnWidths = widths;
+      var cells = document.querySelectorAll("[data-inventory-column='" + column + "'], td:nth-child(" + ((C.inventoryColumns || []).indexOf(column) + 1) + ")");
+      cells.forEach(function (cell) {
+        cell.style.width = widths[column] + "px";
+        cell.style.minWidth = Math.max(92, widths[column]) + "px";
+      });
+    }
+    function onUp() {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      render();
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   }
 
   function toggleClock() {

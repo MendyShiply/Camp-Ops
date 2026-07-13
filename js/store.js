@@ -111,6 +111,7 @@
       request.costActual = Number(request.costActual || 0);
       request.chat = request.chat || [];
       request.taskId = request.taskId || "";
+      request.status = request.status || "pending";
     });
     state.tasks = state.tasks || [];
     state.tasks.forEach(function (task) {
@@ -119,6 +120,17 @@
       task.costActual = Number(task.costActual || 0);
     });
     state.supplyRequests = state.supplyRequests || [];
+    state.supplyRequests.forEach(function (request) {
+      request.category = request.category || "Other";
+      request.status = request.status || "requested";
+      request.requestedBy = request.requestedBy || "";
+      request.orderedBy = request.orderedBy || "";
+      request.trackingNumber = request.trackingNumber || "";
+      request.vendor = request.vendor || "";
+      request.orderNote = request.orderNote || "";
+      request.quantity = Number(request.quantity || request.requestQty || 1);
+      request.unit = request.unit || "each";
+    });
     state.inventory = state.inventory && state.inventory.length ? state.inventory : clone(seed.inventory || []);
     var seedInventory = {};
     (seed.inventory || []).forEach(function (item) { seedInventory[item.id] = item; });
@@ -133,8 +145,14 @@
       item.codes = item.codes || "";
       item.quantity = Number(item.quantity || 0);
       item.unit = item.unit || "each";
+      item.packageCount = Number(item.packageCount || item.quantity || 0);
+      item.packageQty = Number(item.packageQty || 1);
+      item.purchaseDate = item.purchaseDate || "";
+      item.purchasedBy = item.purchasedBy || "";
+      item.purchaseStore = item.purchaseStore || "";
       item.lowAt = Number(item.lowAt || 0);
       item.requestQty = Number(item.requestQty || item.lowAt || 1);
+      item.autoRequestTo = item.autoRequestTo || "";
       item.autoRequest = !!item.autoRequest;
       item.locations = item.locations || [];
       item.notes = item.notes || "";
@@ -173,10 +191,12 @@
     selectedRequestId: null,
     selectedInventoryId: null,
     inventoryModalOpen: false,
+    inventoryAutomationId: null,
     inventorySearch: "",
     inventorySort: "item",
     inventorySortDir: "asc",
-    inventoryColumns: ["item", "manufacturer", "sku", "quantity", "lowAt", "location", "color", "size", "actions"],
+    inventoryColumns: ["item", "category", "manufacturer", "sku", "packageCount", "packageQty", "totalQuantity", "lowAt", "location", "actions"],
+    inventoryColumnWidths: {},
     userModalOpen: false,
     remoteLoaded: false,
     esc: esc,
