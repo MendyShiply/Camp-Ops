@@ -243,6 +243,25 @@
       if (!response.ok) throw new Error(body.msg || body.error_description || "Could not send password reset.");
       return true;
     },
+    sendInvite: async function (email) {
+      email = String(email || "").trim();
+      if (!email) throw new Error("Please enter an email address.");
+      var response = await fetch(this.config.url + "/auth/v1/otp", {
+        method: "POST",
+        headers: {
+          apikey: this.config.anonKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: email,
+          create_user: true,
+          options: { email_redirect_to: location.origin }
+        })
+      });
+      var body = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(body.msg || body.error_description || "Could not send invite.");
+      return true;
+    },
     applyAuthUser: function () {
       var authUser = this.authUser();
       if (!authUser || !authUser.email) return;

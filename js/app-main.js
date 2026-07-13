@@ -166,6 +166,12 @@
     document.querySelectorAll("[data-reset-user-password]").forEach(function (button) {
       button.addEventListener("click", function () { sendPasswordReset(button.dataset.resetUserPassword); });
     });
+    document.querySelectorAll("[data-invite-user]").forEach(function (button) {
+      button.addEventListener("click", function () { sendInvite(button.dataset.inviteUser); });
+    });
+    document.querySelectorAll("[data-delete-user]").forEach(function (button) {
+      button.addEventListener("click", function () { deleteUser(button.dataset.deleteUser); });
+    });
     var loginSubmit = document.getElementById("login-submit");
     if (loginSubmit) loginSubmit.addEventListener("click", login);
     var forgotPassword = document.getElementById("forgot-password");
@@ -383,13 +389,14 @@
     render();
   }
 
-  function createUser() {
+  async function createUser() {
     var firstName = document.getElementById("user-first-name").value.trim();
     var lastName = document.getElementById("user-last-name").value.trim();
     var email = document.getElementById("user-email").value.trim();
     var role = document.getElementById("user-access-level").value;
     var phone = document.getElementById("user-phone").value.trim();
     var team = document.getElementById("user-team").value;
+    var sendInviteAfter = document.getElementById("user-send-invite").checked;
     var name = (firstName + " " + lastName).trim();
     if (!firstName || !email) return alert("Please add at least first name and email.");
     if (!C.accessLevels.some(function (level) { return level.id === role; })) role = "worker";
@@ -399,7 +406,24 @@
     C.state.users.push({ id: C.uid("u"), firstName: firstName, lastName: lastName, name: name, email: email, phone: phone, role: role, team: team });
     C.userModalOpen = false;
     C.save();
+    if (sendInviteAfter) {
+      try {
+        await C.sendInvite(email);
+        alert("User saved and invite sent.");
+      } catch (error) {
+        alert("User saved, but invite could not be sent: " + (error.message || "Unknown error."));
+      }
+    }
     render();
+  }
+
+  async function sendInvite(email) {
+    try {
+      await C.sendInvite(email);
+      alert("Invite email sent.");
+    } catch (error) {
+      alert(error.message || "Could not send invite.");
+    }
   }
 
   async function sendPasswordReset(email) {
@@ -409,6 +433,22 @@
     } catch (error) {
       alert(error.message || "Could not send password reset.");
     }
+  }
+
+  function deleteUser(userId) {
+    var user = C.state.users.find(function (item) { return item.id === userId; });
+    if (!user) return;
+    if (user.id === C.me().id) return alert("You cannot delete the user you are currently using.");
+    if (user.role === "owner" && C.state.users.filter(function (item) { return item.role === "owner"; }).length <= 1) {
+      return alert("You need at least one Owner user.");
+    }
+    if (!confirm("Delete " + user.name + " from Camp Ops access? This does not delete the Supabase Auth account.")) return;
+    C.state.users = C.state.users.filter(function (item) { return item.id !== userId; });
+    (C.state.employees || []).forEach(function (employee) {
+      if (employee.userId === userId) employee.userId = "";
+    });
+    C.save();
+    render();
   }
 
   async function login() {

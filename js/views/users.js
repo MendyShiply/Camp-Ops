@@ -2,7 +2,7 @@
   var C = window.CampOps;
   window.CampOpsViews.users = function () {
     return "<div class=\"topbar\"><div><h2>Users</h2><p class=\"muted\">Choose who someone is and what parts of Camp Ops they can access. Login accounts are matched by email.</p></div><button class=\"btn\" id=\"new-user\">Add user</button></div>" +
-      "<section class=\"panel auth-note\"><h3>Supabase login accounts</h3><p class=\"muted\">Camp Ops can create the user profile here. To also create the Supabase Auth login from this same form, we need a secure invite function using a Supabase service-role key. That key cannot safely live in the browser app.</p></section>" +
+      "<section class=\"panel auth-note\"><h3>Supabase login accounts</h3><p class=\"muted\">Camp Ops stores the access profile here. Send invite emails from each user card after adding basic info. Deleting here removes Camp Ops access; removing the underlying Supabase Auth account still belongs in Supabase unless we add a secure admin function later.</p></section>" +
       "<section class=\"access-grid\">" + C.accessLevels.map(function (level) {
         return "<div class=\"access-card\"><strong>" + C.esc(level.label) + "</strong><span>" + C.esc(level.detail) + "</span></div>";
       }).join("") + "</section><section class=\"panel\"><div class=\"grid cols-3\">" +
@@ -12,7 +12,9 @@
             var disabled = !C.isOwner() && level.id === "owner" ? " disabled" : "";
             return "<option value=\"" + level.id + "\" " + (user.role === level.id ? "selected" : "") + disabled + ">" + C.esc(level.label) + "</option>";
           }).join("") + "</select></label>" +
-          (user.email ? "<button class=\"btn secondary\" data-reset-user-password=\"" + C.esc(user.email) + "\">Send password reset</button>" : "") + "</div>";
+          "<div class=\"user-actions\">" +
+            (user.email ? "<button class=\"btn secondary\" data-invite-user=\"" + C.esc(user.email) + "\">Send invite</button><button class=\"btn secondary\" data-reset-user-password=\"" + C.esc(user.email) + "\">Reset password</button>" : "") +
+            "<button class=\"btn danger\" data-delete-user=\"" + C.esc(user.id) + "\">Delete</button></div></div>";
       }).join("") + "</div></section>" + (C.userModalOpen ? window.CampOpsViews.userModal() : "");
   };
 
@@ -29,6 +31,7 @@
       "<div class=\"field full\"><label>Team</label><select id=\"user-team\">" + C.state.teams.map(function (team) {
         return "<option>" + C.esc(team) + "</option>";
       }).join("") + "</select></div>" +
+      "<label class=\"check-field full\"><input id=\"user-send-invite\" type=\"checkbox\" checked> Send invite email after saving</label>" +
       "<div class=\"actions full\"><button class=\"btn\" id=\"save-user-modal\">Save user</button><button class=\"btn secondary\" id=\"cancel-user-modal-2\">Cancel</button></div></div></section></div>";
   };
 

@@ -447,6 +447,30 @@ button {
   padding: 8px;
 }
 
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-actions .btn {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.check-field input {
+  width: auto;
+  min-height: auto;
+}
+
 .share-panel {
   display: flex;
   align-items: center;
