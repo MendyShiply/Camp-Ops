@@ -123,6 +123,32 @@ button {
   border-radius: 8px;
 }
 
+.preview-note {
+  margin: 0 0 8px;
+  color: #ffd59c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.language-picker {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  color: #dce9e3;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.language-picker select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: #0f302c;
+  color: #eef6f0;
+  padding: 7px;
+}
+
 .main {
   padding: 28px;
   overflow-x: hidden;

@@ -105,6 +105,14 @@
     return location.origin + location.pathname + "#" + encodeURIComponent(link);
   }
 
+  function languageLabel(code) {
+    return {
+      en: "English",
+      es: "Spanish",
+      "es-EC": "Spanish (Ecuador)"
+    }[code || "en"] || "English";
+  }
+
   function mergeState(localState, remoteState) {
     var local = ensureSyncMeta(migrateState(Object.assign(clone(seed), localState || {})));
     var remote = ensureSyncMeta(migrateState(Object.assign(clone(seed), remoteState || {})));
@@ -297,6 +305,8 @@
     })(),
     auth: JSON.parse(localStorage.getItem(AUTH_KEY) || "null"),
     currentUserId: localStorage.getItem("campOpsCurrentUser") || "u-mendy",
+    previewUserId: localStorage.getItem("campOpsPreviewUser") || "",
+    language: localStorage.getItem("campOpsLanguage") || "en",
     view: params.has("request") ? "requestForm" : "dashboard",
     selectedTaskId: null,
     selectedRequestId: null,
@@ -363,8 +373,10 @@
     },
     signOut: function () {
       this.auth = null;
+      this.previewUserId = "";
       localStorage.removeItem(AUTH_KEY);
       localStorage.removeItem("campOpsCurrentUser");
+      localStorage.removeItem("campOpsPreviewUser");
       this.currentUserId = "u-mendy";
     },
     sendPasswordReset: async function (email) {
@@ -491,6 +503,7 @@
       return outputArray;
     },
     applyAuthUser: function () {
+      if (this.previewUserId) return;
       var authUser = this.authUser();
       if (!authUser || !authUser.email) return;
       var email = authUser.email.toLowerCase();
@@ -520,7 +533,13 @@
     },
     me: function () {
       this.applyAuthUser();
-      return this.state.users.find(function (user) { return user.id === window.CampOps.currentUserId; }) || this.state.users[0];
+      var activeId = this.previewUserId || this.currentUserId;
+      return this.state.users.find(function (user) { return user.id === activeId; }) || this.state.users[0];
+    },
+    languageLabel: languageLabel,
+    setLanguage: function (code) {
+      this.language = code || "en";
+      localStorage.setItem("campOpsLanguage", this.language);
     },
     isAdmin: function () {
       return ["owner", "director", "supervisor"].indexOf(this.me().role) >= 0;
@@ -571,6 +590,16 @@
     },
     taskById: function (id) {
       return this.state.tasks.find(function (task) { return task.id === id; });
+    },
+    deleteTask: function (taskId) {
+      var task = this.taskById(taskId);
+      if (!task) return false;
+      var stamp = nowIso();
+      this.state.tombstones = this.state.tombstones || {};
+      this.state.tombstones[task.id] = stamp;
+      this.state.tasks = this.state.tasks.filter(function (item) { return item.id !== task.id; });
+      this.save();
+      return true;
     },
     requestById: function (id) {
       return this.state.requests.find(function (request) { return request.id === id; });

@@ -13,6 +13,21 @@
     return (C.state.buildings || []).find(function (building) { return building.id === id; }) || { id: id, label: "No building", name: "", type: "", notes: "" };
   }
 
+  function buildingNumber(building) {
+    var text = String(building.label || building.id || "");
+    var match = text.match(/#\s*(\d+)/) || String(building.id || "").match(/^(\d+)/);
+    return match ? match[1] : text.replace(/^Building\s*#?\s*/i, "");
+  }
+
+  function apartmentLetter(building) {
+    var id = String(building.id || "");
+    var match = id.match(/^\d+([A-Za-z]+)$/);
+    if (match) return match[1].toUpperCase();
+    var label = String(building.label || "");
+    match = label.match(/#\s*\d+\s*([A-Za-z]+)$/);
+    return match ? match[1].toUpperCase() : "";
+  }
+
   function roomInput(room, field, type) {
     var value = room[field] == null ? "" : room[field];
     return "<input data-room-field=\"" + C.esc(field) + "\" data-room-id=\"" + C.esc(room.id) + "\" type=\"" + type + "\" value=\"" + C.esc(value) + "\">";
@@ -22,8 +37,8 @@
     return [
       row.building.label,
       row.building.name,
-      row.building.type,
       row.building.notes,
+      apartmentLetter(row.building),
       row.room.name,
       row.room.assignment,
       row.room.notes
@@ -68,7 +83,7 @@
     if (sort === "building") return buildingSortKey(row.building);
     if (sort === "name") return String(row.room.name || "").toLowerCase();
     if (sort === "assignment") return String(row.room.assignment || "").toLowerCase();
-    if (sort === "type") return String(row.building.type || "").toLowerCase();
+    if (sort === "apartment") return apartmentLetter(row.building).toLowerCase();
     return String(row.room.notes || row.building.notes || "").toLowerCase();
   }
 
@@ -94,8 +109,9 @@
     var room = row.room;
     var isEmpty = row.kind !== "room";
     return "<tr>" +
-      "<td><strong>" + C.esc(building.label || building.id) + "</strong><small>" + C.esc(building.name || "") + "</small></td>" +
-      "<td>" + C.esc(building.type || "Building") + "</td>" +
+      "<td><strong>" + C.esc(buildingNumber(building)) + "</strong></td>" +
+      "<td>" + C.esc(apartmentLetter(building)) + "</td>" +
+      "<td><strong>" + C.esc(building.name || "") + "</strong></td>" +
       "<td>" + (isEmpty ? "<span class=\"muted\">No rooms yet</span>" : "<strong>" + C.esc(room.name) + "</strong>") + "</td>" +
       "<td>" + (isEmpty ? "" : roomInput(room, "assignment", "text")) + "</td>" +
       "<td>" + (isEmpty ? "" : roomInput(room, "beds", "number")) + "</td>" +
@@ -112,7 +128,7 @@
     var rows = filteredRows();
     var sum = totals(rows);
     return "<div class=\"topbar page-hero\"><div><h2>Buildings & Rooms</h2><p class=\"muted\">Spreadsheet view for houses, apartments, rooms, beds, bathrooms, assignments, and notes.</p></div><button class=\"btn\" id=\"new-building\">Add building</button></div>" +
-      "<section class=\"panel inventory-toolbar building-toolbar\"><div class=\"field\"><label>Search buildings</label><input id=\"building-search\" value=\"" + C.esc(C.buildingSearch || "") + "\" placeholder=\"Building, house, room, family, bunk, note...\"></div><button class=\"btn secondary\" data-building-sort=\"building\">A-Z</button><button class=\"btn secondary\" data-building-sort=\"beds\">Beds</button><button class=\"btn secondary\" data-building-sort=\"assignment\">Assignment</button></section>" +
+      "<section class=\"panel inventory-toolbar building-toolbar\"><div class=\"field\"><label>Search buildings</label><input id=\"building-search\" value=\"" + C.esc(C.buildingSearch || "") + "\" placeholder=\"Building, apartment, house, room, family, bunk, note...\"></div><button class=\"btn secondary\" data-building-sort=\"building\">A-Z</button><button class=\"btn secondary\" data-building-sort=\"beds\">Beds</button><button class=\"btn secondary\" data-building-sort=\"assignment\">Bunk / family</button></section>" +
       "<section class=\"room-summary building-summary\">" +
         "<span><strong>" + (C.state.buildings || []).length + "</strong> buildings</span>" +
         "<span><strong>" + sum.rooms + "</strong> rooms / spaces</span>" +
@@ -123,8 +139,9 @@
         "<span><strong>" + sum.showers + "</strong> showers</span>" +
       "</section>" +
       "<section class=\"panel inventory-sheet building-sheet\"><div class=\"table-wrap\"><table class=\"inventory-table building-table\"><thead><tr>" +
-        header("building", "Building") +
-        header("type", "Type") +
+        header("building", "Building #") +
+        header("apartment", "Apartment / building") +
+        header("name", "House / building name") +
         header("name", "Room / space") +
         header("assignment", "Bunk / family") +
         header("beds", "Beds") +
@@ -134,6 +151,6 @@
         header("showers", "Showers") +
         header("notes", "Notes") +
         "<th>Action</th>" +
-      "</tr></thead><tbody>" + (rows.length ? rows.map(rowHtml).join("") : "<tr><td colspan=\"11\"><div class=\"empty\">No buildings or rooms match that search.</div></td></tr>") + "</tbody></table></div></section>";
+      "</tr></thead><tbody>" + (rows.length ? rows.map(rowHtml).join("") : "<tr><td colspan=\"12\"><div class=\"empty\">No buildings or rooms match that search.</div></td></tr>") + "</tbody></table></div></section>";
   };
 })();

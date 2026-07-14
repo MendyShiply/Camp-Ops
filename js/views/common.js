@@ -36,9 +36,11 @@
     },
     messageHtml: function (message) {
       var isImage = String(message.imageData || "").indexOf("data:image/") === 0;
+      var text = String(message.text || "");
       return "<div class=\"message\"><strong>" + C.esc(message.authorName) + "</strong> " +
         "<span class=\"muted\">" + new Date(message.createdAt).toLocaleString() + "</span>" +
-        "<div>" + C.esc(message.text || "") + "</div>" +
+        "<div>" + C.esc(text) + "</div>" +
+        (text ? "<button class=\"translate-link\" data-translate-text=\"" + C.esc(text) + "\">Translate to English</button>" : "") +
         (message.imageData && isImage ? "<img src=\"" + message.imageData + "\" alt=\"Uploaded photo\">" : "") +
         (message.imageData && !isImage ? "<a class=\"attachment-link\" href=\"" + message.imageData + "\" download>Download attachment</a>" : "") +
       "</div>";

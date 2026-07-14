@@ -26,7 +26,10 @@
 
   function boardCard(task) {
     var statusClass = task.status === "done" ? "ok" : task.status === "blocked" ? "danger" : task.status === "in_progress" ? "warn" : "";
-    return "<button class=\"board-card\" draggable=\"true\" data-drag-task=\"" + task.id + "\" data-open-task=\"" + task.id + "\"><strong>" + C.esc(task.title) + "</strong><span>" + C.esc(C.locationName(task.locationId)) + "</span><small>" + C.esc(task.assignedTeam || "No team") + " - due " + C.esc(task.dueTime || "none") + "</small><em class=\"pill " + statusClass + "\">" + C.esc(task.priority) + "</em></button>";
+    return "<article class=\"board-card\" draggable=\"true\" data-drag-task=\"" + task.id + "\">" +
+      "<button class=\"card-open\" data-open-task=\"" + task.id + "\"><strong>" + C.esc(task.title) + "</strong><span>" + C.esc(C.locationName(task.locationId)) + "</span><small>" + C.esc(task.assignedTeam || "No team") + " - due " + C.esc(task.dueTime || "none") + "</small></button>" +
+      "<div class=\"card-meta\"><em class=\"pill " + statusClass + "\">" + C.esc(task.priority) + "</em>" + (C.isAdmin() ? "<button class=\"btn danger mini-btn\" data-task-delete=\"" + task.id + "\">Delete</button>" : "") + "</div>" +
+    "</article>";
   }
 
   V.taskDetail = function () {
@@ -44,7 +47,8 @@
           "<h4>Subtasks / Standard</h4><ul class=\"subtasks check-standard\">" + (task.subtasks || []).map(function (subtask) { return "<li>" + C.esc(subtask) + "</li>"; }).join("") + "</ul>" +
           "<div class=\"actions\"><button class=\"btn secondary\" data-task-action=\"progress\" data-task-id=\"" + task.id + "\">Start</button>" +
           "<button class=\"btn\" data-task-action=\"done\" data-task-id=\"" + task.id + "\">Done</button>" +
-          "<button class=\"btn secondary\" data-task-action=\"problem\" data-task-id=\"" + task.id + "\">Problem</button></div></div>" +
+          "<button class=\"btn secondary\" data-task-action=\"problem\" data-task-id=\"" + task.id + "\">Problem</button>" +
+          (C.isAdmin() ? "<button class=\"btn danger\" data-task-delete=\"" + task.id + "\">Delete task</button>" : "") + "</div></div>" +
         "<div class=\"panel task-side\"><h3>Task chat</h3><div class=\"chat-thread\">" + (task.chat || []).map(V.messageHtml).join("") +
           "</div><div class=\"form-grid chat-composer\"><div class=\"field full\"><textarea id=\"chat-text\" placeholder=\"Message, question, or note...\"></textarea></div>" +
           "<div class=\"field chat-upload\"><input id=\"chat-file\" type=\"file\" accept=\"image/*,.pdf,.doc,.docx\"></div>" +

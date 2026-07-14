@@ -74,10 +74,12 @@
 
     app.innerHTML = "<div class=\"mobile-top\"><strong>Camp Ops</strong><select id=\"mobile-view\">" +
       nav().map(function (item) { return "<option value=\"" + item[0] + "\" " + (C.view === item[0] ? "selected" : "") + ">" + item[1] + "</option>"; }).join("") +
-      "</select></div><div class=\"app-shell\"><aside class=\"sidebar\"><div class=\"brand\"><div class=\"brand-mark\">CO</div><div><h1>Camp Ops</h1><p class=\"muted\">CGI Chai</p></div></div><nav class=\"nav\">" +
+      "</select><select class=\"mobile-language\" data-language-select><option value=\"en\" " + (C.language === "en" ? "selected" : "") + ">English</option><option value=\"es\" " + (C.language === "es" ? "selected" : "") + ">Spanish</option><option value=\"es-EC\" " + (C.language === "es-EC" ? "selected" : "") + ">Spanish (Ecuador)</option></select></div><div class=\"app-shell\"><aside class=\"sidebar\"><div class=\"brand\"><div class=\"brand-mark\">CO</div><div><h1>Camp Ops</h1><p class=\"muted\">CGI Chai</p></div></div><nav class=\"nav\">" +
       nav().map(function (item) { return "<button class=\"" + (C.view === item[0] ? "active" : "") + "\" data-view=\"" + item[0] + "\">" + item[1] + "</button>"; }).join("") +
       "</nav><div class=\"user-card\"><strong>" + C.esc(C.me().name) + "</strong><p>" + C.esc(C.roleLabel(C.me().role)) + " - " + C.esc(C.me().team) + "</p>" +
-      (C.canManageUsers() ? "<button class=\"btn secondary\" id=\"open-switch-user\">Switch user</button>" : "") + "</div></aside><main class=\"main\">" +
+      (C.previewUserId ? "<p class=\"preview-note\">Preview mode</p>" : "") +
+      "<label class=\"language-picker\">Language<select data-language-select><option value=\"en\" " + (C.language === "en" ? "selected" : "") + ">English</option><option value=\"es\" " + (C.language === "es" ? "selected" : "") + ">Spanish</option><option value=\"es-EC\" " + (C.language === "es-EC" ? "selected" : "") + ">Spanish (Ecuador)</option></select></label>" +
+      (C.canManageUsers() || C.previewUserId ? "<button class=\"btn secondary\" id=\"open-switch-user\">Switch user</button>" : "") + "</div></aside><main class=\"main\">" +
       renderView() + "</main></div>" + (C.switchUserModalOpen ? V.switchUserModal() : "");
     bind();
   }
@@ -172,6 +174,12 @@
     });
     document.querySelectorAll("[data-task-action]").forEach(function (button) {
       button.addEventListener("click", function () { handleTaskAction(button); });
+    });
+    document.querySelectorAll("[data-task-delete]").forEach(function (button) {
+      button.addEventListener("click", function (event) {
+        event.stopPropagation();
+        deleteTask(button.dataset.taskDelete);
+      });
     });
     document.querySelectorAll("[data-request-action]").forEach(function (button) {
       button.addEventListener("click", function () { handleRequestAction(button); });
@@ -375,6 +383,15 @@
     });
     var clockToggle = document.getElementById("clock-toggle");
     if (clockToggle) clockToggle.addEventListener("click", toggleClock);
+    document.querySelectorAll("[data-language-select]").forEach(function (select) {
+      select.addEventListener("change", function () {
+        C.setLanguage(select.value);
+        render();
+      });
+    });
+    document.querySelectorAll("[data-translate-text]").forEach(function (button) {
+      button.addEventListener("click", function () { translateToEnglish(button.dataset.translateText); });
+    });
     document.querySelectorAll("[data-move-task]").forEach(function (select) {
       select.addEventListener("change", function () {
         C.taskById(select.dataset.moveTask).scheduleBlock = select.value;
@@ -384,8 +401,8 @@
     });
     document.querySelectorAll("[data-user]").forEach(function (button) {
       button.addEventListener("click", function () {
-        C.currentUserId = button.dataset.user;
-        localStorage.setItem("campOpsCurrentUser", C.currentUserId);
+        C.previewUserId = button.dataset.user;
+        localStorage.setItem("campOpsPreviewUser", C.previewUserId);
         C.switchUserModalOpen = false;
         C.view = "dashboard";
         render();
@@ -616,12 +633,16 @@
       };
       C.state.users.push(user);
     }
-    C.currentUserId = user.id;
-    localStorage.setItem("campOpsCurrentUser", C.currentUserId);
+    C.previewUserId = user.id;
+    localStorage.setItem("campOpsPreviewUser", C.previewUserId);
     C.switchUserModalOpen = false;
     if (!C.canAccess(C.view)) C.view = role === "requester" ? "requestForm" : "dashboard";
-    C.save();
     render();
+  }
+
+  function translateToEnglish(text) {
+    var url = "https://translate.google.com/?sl=auto&tl=en&text=" + encodeURIComponent(text || "") + "&op=translate";
+    window.open(url, "_blank", "noopener");
   }
 
   async function login() {
@@ -720,6 +741,16 @@
     C.deleteRequest(requestId);
     C.selectedRequestId = null;
     C.view = "requests";
+    render();
+  }
+
+  function deleteTask(taskId) {
+    var task = C.taskById(taskId);
+    if (!task) return;
+    if (!confirm("Delete this task? This removes it from the task board and syncs the delete when online.")) return;
+    C.deleteTask(taskId);
+    C.selectedTaskId = null;
+    C.view = "tasks";
     render();
   }
 

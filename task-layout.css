@@ -620,6 +620,23 @@
   white-space: nowrap;
 }
 
+.mini-btn {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.translate-link {
+  justify-self: start;
+  margin-top: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
 .active-toggle {
   border-color: var(--accent);
   background: #dff1e6;
